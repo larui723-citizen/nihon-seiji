@@ -59,49 +59,94 @@ button:active {
 </head>
 
 <body>
-
 <div class="box">
 
 <div id="start">
 
-<h1>🇯🇵 日本政局</h1>
+<h1>日本政局</h1>
 
-<p>政治シミュレーション・テスト版</p>
+<p>現代日本の政治シミュレーション</p>
+
+<label>所属する政党</label>
+
+<select id="party">
+<option value="自由民主党">自由民主党</option>
+<option value="中道改革連合">中道改革連合</option>
+<option value="日本維新の会">日本維新の会</option>
+<option value="国民民主党">国民民主党</option>
+<option value="参政党">参政党</option>
+<option value="チームみらい">チームみらい</option>
+<option value="日本共産党">日本共産党</option>
+<option value="れいわ新選組">れいわ新選組</option>
+<option value="日本保守党">日本保守党</option>
+<option value="社会民主党">社会民主党</option>
+<option value="新党を作る">新党を作る</option>
+</select>
+
+<div id="newParty" style="display:none;">
+
+<label>新しい政党名</label>
+
+<input
+id="newPartyName"
+type="text"
+placeholder="例：日本未来党"
+>
+
+<label>あなたの政治家名</label>
+
+<input
+id="playerName"
+type="text"
+placeholder="例：山田太郎"
+>
+
+<label>政治理念</label>
+
+<textarea
+id="philosophy"
+placeholder="どんな日本を目指しますか？"
+></textarea>
+
+</div>
 
 <button type="button" onclick="startGame()">
-🎮 ゲーム開始
+ゲーム開始
 </button>
 
 </div>
 
 
-<div id="game">
+<div id="game" style="display:none;">
 
-<h1>🇯🇵 日本政局</h1>
+<h1 id="partyTitle">日本政局</h1>
 
 <div class="stat">
-📅 <span id="date">2026年1月</span>
+日付：<span id="date">2026年1月</span>
 </div>
 
 <div class="stat">
-📊 支持率：<span id="support">20</span>%
+政党：<span id="currentParty"></span>
 </div>
 
 <div class="stat">
-⚡ 今月の行動：<span id="actions">4</span>/4
+支持率：<span id="support">20</span>%
 </div>
 
+<div class="stat">
+今月の行動：<span id="actions">4</span>/4
+</div>
 
 <button type="button" onclick="speech()">
-🎤 街頭演説
+街頭演説
 </button>
 
 <button type="button" onclick="nextMonth()">
-➡️ 翌月へ進む
+翌月へ進む
 </button>
 
 <div id="message">
-ゲームを開始してください。
+ゲームを開始しました。
 </div>
 
 </div>
@@ -116,17 +161,141 @@ let month = 1;
 let support = 20;
 let actions = 4;
 
+let currentParty = "";
+let playerName = "";
+let philosophy = "";
+
+
+/* 新党を選んだとき */
+
+document.getElementById("party").addEventListener(
+    "change",
+    function() {
+
+        let box = document.getElementById("newParty");
+
+        if (this.value === "新党を作る") {
+            box.style.display = "block";
+        } else {
+            box.style.display = "none";
+        }
+
+    }
+);
+
 
 /* ゲーム開始 */
 
 function startGame() {
 
-    document.getElementById("start").style.display = "none";
+    let selected =
+        document.getElementById("party").value;
 
-    document.getElementById("game").style.display = "block";
+    if (selected === "新党を作る") {
+
+        currentParty =
+            document.getElementById("newPartyName").value;
+
+        playerName =
+            document.getElementById("playerName").value;
+
+        philosophy =
+            document.getElementById("philosophy").value;
+
+        if (currentParty === "") {
+            currentParty = "日本未来党";
+        }
+
+        if (playerName === "") {
+            playerName = "プレイヤー";
+        }
+
+        if (philosophy === "") {
+            philosophy = "独自路線";
+        }
+
+        support = 8;
+
+    } else {
+
+        currentParty = selected;
+
+        playerName = "プレイヤー";
+
+        philosophy = "既存政党の政治方針";
+
+        /*
+        テスト段階なので、
+        政党ごとの支持率はまだ簡略化。
+        */
+
+        if (currentParty === "自由民主党") {
+            support = 32;
+        }
+
+        if (currentParty === "中道改革連合") {
+            support = 15;
+        }
+
+        if (currentParty === "日本維新の会") {
+            support = 9;
+        }
+
+        if (currentParty === "国民民主党") {
+            support = 8;
+        }
+
+        if (currentParty === "参政党") {
+            support = 4;
+        }
+
+        if (currentParty === "チームみらい") {
+            support = 3;
+        }
+
+        if (currentParty === "日本共産党") {
+            support = 3;
+        }
+
+        if (currentParty === "れいわ新選組") {
+            support = 4;
+        }
+
+        if (currentParty === "日本保守党") {
+            support = 2;
+        }
+
+        if (currentParty === "社会民主党") {
+            support = 1;
+        }
+
+    }
+
+
+    document.getElementById("start").style.display =
+        "none";
+
+    document.getElementById("game").style.display =
+        "block";
+
+
+    document.getElementById("partyTitle").textContent =
+        currentParty;
+
+    document.getElementById("currentParty").textContent =
+        currentParty;
+
+    document.getElementById("support").textContent =
+        support;
+
+    document.getElementById("actions").textContent =
+        actions;
+
 
     document.getElementById("message").textContent =
-        "ゲーム開始！街頭演説をしてみよう。";
+        currentParty +
+        "で政治活動を開始しました。";
+
 
 }
 
@@ -144,9 +313,16 @@ function speech() {
 
     }
 
+
     actions--;
 
     support += 1;
+
+
+    if (support > 100) {
+        support = 100;
+    }
+
 
     document.getElementById("support").textContent =
         support;
@@ -154,8 +330,9 @@ function speech() {
     document.getElementById("actions").textContent =
         actions;
 
+
     document.getElementById("message").textContent =
-        "🎤 街頭演説を行いました。支持率が1ポイント上昇しました。";
+        "街頭演説を行いました。支持率が上昇しました。";
 
 }
 
@@ -164,19 +341,18 @@ function speech() {
 
 function nextMonth() {
 
-    year++;
+    month++;
 
-    if (month >= 12) {
+    if (month > 12) {
 
         month = 1;
-
-    } else {
-
-        month++;
+        year++;
 
     }
 
+
     actions = 4;
+
 
     document.getElementById("date").textContent =
         year + "年" + month + "月";
@@ -184,12 +360,12 @@ function nextMonth() {
     document.getElementById("actions").textContent =
         actions;
 
+
     document.getElementById("message").textContent =
-        "📅 新しい月になりました。行動回数が4回に戻りました。";
+        "新しい月になりました。行動回数が4回に戻りました。";
 
 }
 
 </script>
-
 </body>
 </html>
