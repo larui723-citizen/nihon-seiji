@@ -3,109 +3,104 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>日本政局 - 政治シミュレーション</title>
+<title>日本政局</title>
+
 <style>
 *{box-sizing:border-box}
 
 body{
- margin:0;
- font-family:-apple-system,BlinkMacSystemFont,"Noto Sans JP",sans-serif;
- background:#edf0f4;
- color:#20252b;
+margin:0;
+font-family:-apple-system,BlinkMacSystemFont,"Noto Sans JP",sans-serif;
+background:#edf0f4;
+color:#20252b;
 }
 
 header{
- background:#18222d;
- color:white;
- padding:15px;
- text-align:center;
- position:sticky;
- top:0;
- z-index:20;
+background:#18222d;
+color:white;
+padding:15px;
+text-align:center;
+position:sticky;
+top:0;
+z-index:20;
 }
 
-header h1{
- margin:0;
- font-size:23px;
-}
-
-header small{
- opacity:.8;
-}
+header h1{margin:0;font-size:23px}
+header small{opacity:.8}
 
 main{
- max-width:1000px;
- margin:auto;
- padding:12px;
+max-width:1000px;
+margin:auto;
+padding:12px;
 }
 
 .card{
- background:white;
- border-radius:15px;
- padding:15px;
- margin-bottom:12px;
- box-shadow:0 2px 8px rgba(0,0,0,.08);
+background:white;
+border-radius:15px;
+padding:15px;
+margin-bottom:12px;
+box-shadow:0 2px 8px rgba(0,0,0,.08);
 }
 
-h2{margin-top:0}
-
 button{
- border:0;
- border-radius:10px;
- padding:11px 13px;
- margin:4px;
- background:#27333e;
- color:white;
- font-size:15px;
+border:0;
+border-radius:10px;
+padding:11px 13px;
+margin:4px;
+background:#27333e;
+color:white;
+font-size:15px;
+cursor:pointer;
 }
 
 button:disabled{
- opacity:.4;
+opacity:.4;
+cursor:not-allowed;
 }
 
 input,textarea,select{
- width:100%;
- padding:11px;
- border:1px solid #ccd3da;
- border-radius:9px;
- margin:5px 0 12px;
- font-size:15px;
+width:100%;
+padding:11px;
+border:1px solid #ccd3da;
+border-radius:9px;
+margin:5px 0 12px;
+font-size:15px;
 }
 
 textarea{
- min-height:110px;
- resize:vertical;
+min-height:110px;
+resize:vertical;
 }
 
 .hidden{display:none}
 
 .stat{
- display:inline-block;
- background:#edf0f3;
- border-radius:10px;
- padding:8px 11px;
- margin:3px;
+display:inline-block;
+background:#edf0f3;
+border-radius:10px;
+padding:8px 11px;
+margin:3px;
 }
 
 .grid{
- display:grid;
- grid-template-columns:repeat(2,1fr);
- gap:8px;
+display:grid;
+grid-template-columns:repeat(2,1fr);
+gap:8px;
 }
 
 .politician{
- border:1px solid #d8dde2;
- border-radius:12px;
- padding:12px;
- margin:8px 0;
+border:1px solid #d8dde2;
+border-radius:12px;
+padding:12px;
+margin:8px 0;
 }
 
 .news{
- background:#f5f6f7;
- border-left:4px solid #4d5964;
- padding:10px;
- margin:8px 0;
- border-radius:6px;
+background:#f5f6f7;
+border-left:4px solid #4d5964;
+padding:10px;
+margin:8px 0;
+border-radius:6px;
 }
 
 .good{border-left-color:#287b42}
@@ -113,92 +108,77 @@ textarea{
 .warn{border-left-color:#a56b16}
 
 .bar{
- height:14px;
- background:#ddd;
- border-radius:20px;
- overflow:hidden;
- margin:6px 0 12px;
+height:14px;
+background:#ddd;
+border-radius:20px;
+overflow:hidden;
+margin:6px 0 12px;
 }
 
 .bar div{
- height:100%;
- width:0%;
- background:#303840;
- transition:.3s;
+height:100%;
+width:0%;
+background:#303840;
+transition:.3s;
 }
 
 .tabs{
- display:flex;
- overflow-x:auto;
- gap:5px;
- margin-bottom:12px;
+display:flex;
+overflow-x:auto;
+gap:5px;
+margin-bottom:12px;
 }
 
 .tabs button{
- white-space:nowrap;
+white-space:nowrap;
 }
 
-.panel{
- display:none;
-}
-
-.panel.active{
- display:block;
-}
+.panel{display:none}
+.panel.active{display:block}
 
 .badge{
- display:inline-block;
- padding:4px 7px;
- border-radius:6px;
- background:#e8ebee;
- font-size:12px;
- margin:2px;
+display:inline-block;
+padding:4px 7px;
+border-radius:6px;
+background:#e8ebee;
+font-size:12px;
+margin:2px;
 }
 
 .small{
- font-size:13px;
- color:#666;
+font-size:13px;
+color:#666;
 }
 
-.center{
- text-align:center;
-}
+.center{text-align:center}
 
 @media(max-width:650px){
- .grid{
-  grid-template-columns:1fr;
- }
- button{
-  width:calc(50% - 10px);
- }
+.grid{grid-template-columns:1fr}
+button{width:calc(50% - 10px)}
 }
-
-table{
- width:100%;
- border-collapse:collapse;
-}
-
-td,th{
- border-bottom:1px solid #ddd;
- padding:7px;
- text-align:left;
-}
-
 </style>
 </head>
+
 <body>
+
 <header>
 <h1>🇯🇵 日本政局</h1>
 <small id="headerDate">ゲーム開始前</small>
 </header>
+
 <main>
+
 <!-- ================= START ================= -->
+
 <section id="setup" class="card">
+
 <h2>🇯🇵 日本政局</h2>
+
 <p>
 現代日本を舞台にした政治シミュレーション。
 </p>
-所属する政党
+
+<label>所属する政党</label>
 
 <select id="partySelect">
 <option>自由民主党</option>
@@ -211,25 +191,38 @@ td,th{
 <option>れいわ新選組</option>
 <option>日本保守党</option>
 <option>社会民主党</option>
-<option value="new">新しい政党を作る</option>
+<option value="new">🆕 新しい政党を作る</option>
 </select>
+
 <div id="newPartyBox" class="hidden">
-新しい政党名
 
-あなたの政治家名
+<label>新しい政党名</label>
+<input id="newPartyName" placeholder="例：日本未来党">
 
-政治理念
+<label>あなたの政治家名</label>
+<input id="playerName" placeholder="例：山田太郎">
 
+<label>政治理念</label>
 <textarea id="philosophy"
 placeholder="どんな日本を目指しますか？"></textarea>
+
 </div>
-ゲーム開始
+
+<button onclick="startGame()">🇯🇵 ゲーム開始</button>
+
+<button onclick="loadGame()">💾 セーブから再開</button>
 
 </section>
+
+
 <!-- ================= GAME ================= -->
+
 <section id="game" class="hidden">
+
 <div class="card">
+
 <h2 id="partyTitle"></h2>
+
 <div class="stat">📅 <b id="date"></b></div>
 <div class="stat">📊 支持率 <b id="support"></b>%</div>
 <div class="stat">🏛️ 議席 <b id="seats"></b></div>
@@ -237,300 +230,444 @@ placeholder="どんな日本を目指しますか？"></textarea>
 <div class="stat">👥 党内基盤 <b id="base"></b></div>
 <div class="stat">💰 経済 <b id="economy"></b></div>
 <div class="stat">💴 物価 <b id="prices"></b></div>
-</div>
-<div class="tabs">
-🏠 政局
-⚡ 行動
-📜 政策
-👤 政治家
-🏛️ 党内
-🌏 外交
-🗳️ 選挙
-📰 ニュース
 
 </div>
+
+
+<!-- TABS -->
+
+<div class="tabs">
+
+<button onclick="showPanel('home')">🏠 政局</button>
+
+<button onclick="showPanel('actionsPanel')">
+⚡ 行動
+</button>
+
+<button onclick="showPanel('policyPanel')">
+📜 政策
+</button>
+
+<button onclick="showPanel('politicianPanel')">
+👤 政治家
+</button>
+
+<button onclick="showPanel('partyPanel')">
+🏛️ 党内
+</button>
+
+<button onclick="showPanel('diplomacyPanel')">
+🌏 外交
+</button>
+
+<button onclick="showPanel('electionPanel')">
+🗳️ 選挙
+</button>
+
+<button onclick="showPanel('newsPanel')">
+📰 ニュース
+</button>
+
+</div>
+
+
 <!-- HOME -->
+
 <section id="home" class="panel active">
+
 <div class="card">
+
 <h2>📊 国民支持</h2>
+
 <div class="bar">
 <div id="supportBar"></div>
 </div>
+
 <p id="supportText"></p>
+
 </div>
+
+
 <div class="card">
+
 <h2>🏛️ 現在の政治状況</h2>
+
 <div id="status"></div>
+
 </div>
-<div class="card">
+
+
+<div class="card center">
+
 <h2>⏭️ 月を進める</h2>
+
 <p>
 今月の行動を終えたら翌月へ進めます。
 </p>
-➡️ 翌月へ
+
+<button onclick="nextMonth()">
+➡️ 翌月へ進む
+</button>
 
 </div>
+
+
+<div class="card center">
+
+<button onclick="saveGame()">
+💾 ゲームを保存
+</button>
+
+</div>
+
 </section>
+
+
 <!-- ACTIONS -->
+
 <section id="actionsPanel" class="panel">
+
 <div class="card">
+
 <h2>⚡ 政治活動</h2>
+
 <p class="small">
 1か月につき最大4回まで。
-同じ行動を繰り返しても効果は徐々に小さくなります。
 </p>
+
+<button onclick="doAction('speech')">
 🎤 街頭演説
+</button>
 
+<button onclick="doAction('media')">
 📺 メディア出演
+</button>
 
+<button onclick="doAction('parliament')">
 🏛️ 国会活動
+</button>
 
+<button onclick="doAction('party')">
 👥 党内基盤強化
+</button>
 
+<button onclick="doAction('education')">
 📚 党内教育
+</button>
 
+<button onclick="doAction('diplomacy')">
 🌏 外交活動
+</button>
 
+<button onclick="doAction('local')">
 🏘️ 地方活動
+</button>
 
 </div>
+
 </section>
+
+
 <!-- POLICY -->
+
 <section id="policyPanel" class="panel">
+
 <div class="card">
+
 <h2>📜 自分で政策を作る</h2>
+
 <p class="small">
 文章で政策を入力すると、ゲーム内の無料政策評価システムが判定します。
-外部AIは使用していません。
 </p>
+
 <textarea id="policyInput"
 placeholder="例：子育て世帯への給付を拡充し、教育費の負担を軽減する。財源として一部の歳出を見直す。"></textarea>
-🧠 政策を評価
+
+<button onclick="evaluatePolicy()">
+🧠 政策を評価する
+</button>
 
 <div id="policyResult"></div>
+
 </div>
+
 <div class="card">
+
 <h2>⏳ 実行中の政策</h2>
+
 <div id="activePolicies"></div>
+
 </div>
+
 </section>
+
+
 <!-- POLITICIANS -->
+
 <section id="politicianPanel" class="panel">
+
 <div class="card">
+
 <h2>👤 政界人物</h2>
+
 <p class="small">
 能力値はゲームバランス用の架空ステータスです。
 </p>
+
 <div id="politicians"></div>
+
 </div>
+
 </section>
+
+
 <!-- PARTY -->
+
 <section id="partyPanel" class="panel">
+
 <div class="card">
+
 <h2>🏛️ 党内政治</h2>
+
 <div id="partyInfo"></div>
+
 </div>
+
 <div class="card">
+
 <h2>👑 党首選・総裁選</h2>
+
 <div id="leadershipArea"></div>
+
 </div>
+
 <div class="card">
+
 <h2>💼 内閣</h2>
+
 <div id="cabinetArea"></div>
+
 </div>
+
 </section>
+
+
 <!-- DIPLOMACY -->
+
 <section id="diplomacyPanel" class="panel">
+
 <div class="card">
+
 <h2>🌏 外交</h2>
+
 <div id="diplomacyArea"></div>
+
 </div>
+
 </section>
+
+
 <!-- ELECTION -->
+
 <section id="electionPanel" class="panel">
+
 <div class="card">
+
 <h2>🗳️ 選挙</h2>
+
 <div id="electionArea"></div>
+
 </div>
+
 </section>
+
+
 <!-- NEWS -->
+
 <section id="newsPanel" class="panel">
+
 <div class="card">
+
 <h2>📰 政局ニュース</h2>
+
 <div id="news"></div>
+
 </div>
+
 </section>
+
 </section>
+
 </main>
+
+
 <script>
 
-/* =====================================================
-   GAME STATE
-===================================================== */
+/* =========================
+GAME STATE
+========================= */
 
 let game={
 
- year:2026,
- month:1,
+year:2026,
+month:1,
 
- party:"",
- leader:"",
+party:"",
+leader:"",
+philosophy:"",
 
- philosophy:"",
+support:20,
+seats:0,
 
- support:20,
- seats:0,
+actions:4,
 
- actions:4,
+base:50,
 
- base:50,
+economy:50,
+prices:50,
 
- economy:50,
- prices:50,
+governing:false,
+primeMinister:false,
 
- governing:false,
- primeMinister:false,
+electionYear:2028,
 
- electionYear:2028,
+cabinet:{},
 
- cabinet:{},
+activePolicies:[],
 
- activePolicies:[],
+news:[],
 
- news:[],
+diplomacy:50,
 
- diplomacy:50,
+scandalProtection:0,
 
- scandalProtection:0,
+lastActions:{},
 
- lastActions:{},
+politicalCapital:50,
 
- politicalCapital:50,
+playerAge:35,
 
- playerAge:35,
-
- electionHistory:[]
+electionHistory:[]
 
 };
 
 
-/* =====================================================
-   PARTY DATA
-===================================================== */
+/* =========================
+PARTIES
+========================= */
 
 const parties={
 
 "自由民主党":{
- seats:316,
- support:32,
- ideology:"保守・中道右派",
- leader:"高市早苗",
- roles:{
-  "代表/総裁":"高市早苗",
-  "幹事長":"小林鷹之"
- }
+seats:316,
+support:32,
+ideology:"保守・中道右派",
+leader:"高市早苗",
+roles:{
+"代表/総裁":"高市早苗",
+"幹事長":"小林鷹之"
+}
 },
 
 "中道改革連合":{
- seats:48,
- support:15,
- ideology:"中道・リベラル",
- leader:"野田佳彦",
- roles:{
-  "代表":"野田佳彦",
-  "幹事長":"長妻昭"
- }
+seats:48,
+support:15,
+ideology:"中道・リベラル",
+leader:"野田佳彦",
+roles:{
+"代表":"野田佳彦",
+"幹事長":"長妻昭"
+}
 },
 
 "日本維新の会":{
- seats:36,
- support:9,
- ideology:"改革・中道右派",
- leader:"吉村洋文",
- roles:{
-  "代表":"吉村洋文",
-  "幹事長":"藤田文武"
- }
+seats:36,
+support:9,
+ideology:"改革・中道右派",
+leader:"吉村洋文",
+roles:{
+"代表":"吉村洋文",
+"幹事長":"藤田文武"
+}
 },
 
 "国民民主党":{
- seats:28,
- support:8,
- ideology:"中道・改革",
- leader:"玉木雄一郎",
- roles:{
-  "代表":"玉木雄一郎",
-  "幹事長":"榛葉賀津也"
- }
+seats:28,
+support:8,
+ideology:"中道・改革",
+leader:"玉木雄一郎",
+roles:{
+"代表":"玉木雄一郎",
+"幹事長":"榛葉賀津也"
+}
 },
 
 "参政党":{
- seats:15,
- support:4,
- ideology:"保守",
- leader:"神谷宗幣",
- roles:{
-  "代表":"神谷宗幣",
-  "幹事長":"川裕一郎"
- }
+seats:15,
+support:4,
+ideology:"保守",
+leader:"神谷宗幣",
+roles:{
+"代表":"神谷宗幣"
+}
 },
 
 "チームみらい":{
- seats:11,
- support:3,
- ideology:"デジタル・改革",
- leader:"安野貴博",
- roles:{
-  "代表":"安野貴博"
- }
+seats:11,
+support:3,
+ideology:"デジタル・改革",
+leader:"安野貴博",
+roles:{
+"代表":"安野貴博"
+}
 },
 
 "日本共産党":{
- seats:4,
- support:3,
- ideology:"左派",
- leader:"田村智子",
- roles:{
-  "委員長":"田村智子"
- }
+seats:4,
+support:3,
+ideology:"左派",
+leader:"田村智子",
+roles:{
+"委員長":"田村智子"
+}
 },
 
 "れいわ新選組":{
- seats:0,
- support:4,
- ideology:"左派・積極財政",
- leader:"山本太郎",
- roles:{
-  "代表":"山本太郎"
- }
+seats:0,
+support:4,
+ideology:"左派・積極財政",
+leader:"山本太郎",
+roles:{
+"代表":"山本太郎"
+}
 },
 
 "日本保守党":{
- seats:0,
- support:2,
- ideology:"保守",
- leader:"百田尚樹",
- roles:{
-  "代表":"百田尚樹"
- }
+seats:0,
+support:2,
+ideology:"保守",
+leader:"百田尚樹",
+roles:{
+"代表":"百田尚樹"
+}
 },
 
 "社会民主党":{
- seats:0,
- support:1,
- ideology:"社民・左派",
- leader:"福島瑞穂",
- roles:{
-  "党首":"福島瑞穂"
- }
+seats:0,
+support:1,
+ideology:"社民・左派",
+leader:"福島瑞穂",
+roles:{
+"党首":"福島瑞穂"
+}
 }
 
 };
 
 
-/* =====================================================
-   POLITICIANS
-===================================================== */
+/* =========================
+POLITICIANS
+========================= */
 
 let politicians=[
 
@@ -810,15 +947,20 @@ ambition:65
 ];
 
 
-/* =====================================================
-   SETUP
-===================================================== */
+/* =========================
+START
+========================= */
 
-document.getElementById("partySelect")
+document
+.getElementById("partySelect")
 .addEventListener("change",function(){
 
-document.getElementById("newPartyBox")
-.classList.toggle("hidden",this.value!=="new");
+document
+.getElementById("newPartyBox")
+.classList.toggle(
+"hidden",
+this.value!=="new"
+);
 
 });
 
@@ -831,15 +973,18 @@ document.getElementById("partySelect").value;
 if(selected==="new"){
 
 game.party=
-document.getElementById("newPartyName").value||
+document.getElementById("newPartyName").value
+.trim() ||
 "日本未来党";
 
 game.leader=
-document.getElementById("playerName").value||
+document.getElementById("playerName").value
+.trim() ||
 "プレイヤー";
 
 game.philosophy=
-document.getElementById("philosophy").value||
+document.getElementById("philosophy").value
+.trim() ||
 "独自路線";
 
 game.support=8;
@@ -850,34 +995,36 @@ game.governing=false;
 
 game.party=selected;
 
-game.leader=parties[selected].leader;
+game.leader=
+parties[selected].leader;
 
-game.philosophy=parties[selected].ideology;
+game.philosophy=
+parties[selected].ideology;
 
-game.support=parties[selected].support;
+game.support=
+parties[selected].support;
 
-game.seats=parties[selected].seats;
+game.seats=
+parties[selected].seats;
 
-/*
-既存政党を選んだ場合は、
-プレイヤーはその党の若手・中堅政治家として開始。
-党首本人ではない。
-*/
+/* 初期状態では自民党を与党として扱う */
 
-if(game.party==="自由民主党"){
- game.governing=true;
+game.governing=
+selected==="自由民主党";
+
 }
 
-}
-
-document.getElementById("setup")
+document
+.getElementById("setup")
 .classList.add("hidden");
 
-document.getElementById("game")
+document
+.getElementById("game")
 .classList.remove("hidden");
 
 addNews(
-"🇯🇵 "+game.party+"で政治活動を開始しました。"
+"🇯🇵 "+game.party+
+"で政治活動を開始しました。"
 );
 
 updateUI();
@@ -885,39 +1032,43 @@ updateUI();
 }
 
 
-/* =====================================================
-   PANEL
-===================================================== */
+/* =========================
+PANELS
+========================= */
 
 function showPanel(id){
 
-document.querySelectorAll(".panel")
-.forEach(p=>p.classList.remove("active"));
+document
+.querySelectorAll(".panel")
+.forEach(p=>
+p.classList.remove("active")
+);
 
-document.getElementById(id)
+document
+.getElementById(id)
 .classList.add("active");
 
 }
 
 
-/* =====================================================
-   ACTION SYSTEM
-===================================================== */
+/* =========================
+ACTIONS
+========================= */
 
 function doAction(type){
 
 if(game.actions<=0){
 
 alert("今月の行動回数は4回までです。");
+
 return;
 
 }
 
 game.actions--;
 
-if(!game.lastActions[type]){
- game.lastActions[type]=0;
-}
+if(!game.lastActions[type])
+game.lastActions[type]=0;
 
 game.lastActions[type]++;
 
@@ -932,12 +1083,10 @@ Math.max(
 
 let message="";
 
-
 if(type==="speech"){
 
 let gain=
-0.9*diminishing+
-game.politicsBonus*0;
+0.9*diminishing;
 
 game.support+=gain;
 
@@ -948,11 +1097,10 @@ gain.toFixed(1)+
 
 }
 
-
-if(type==="rally"){
+if(type==="media"){
 
 let gain=
-1.2*diminishing;
+0.8*diminishing;
 
 game.support+=gain;
 
@@ -961,20 +1109,17 @@ message=
 
 }
 
-
 if(type==="parliament"){
 
 game.base+=
 2*diminishing;
 
-game.politicalCapital+=
-2;
+game.politicalCapital+=2;
 
 message=
 "🏛️ 国会活動を行いました。";
 
 }
-
 
 if(type==="party"){
 
@@ -982,14 +1127,13 @@ game.base+=
 5*diminishing;
 
 game.scandalProtection+=
-3;
+3*diminishing;
 
 message=
 "👥 党内基盤を強化しました。"+
-"党内の結束が高まり、不祥事への耐性も上昇しました。";
+"党内の結束が高まりました。";
 
 }
-
 
 if(type==="education"){
 
@@ -1000,11 +1144,10 @@ game.base+=
 1*diminishing;
 
 message=
-"📚 党内教育を実施しました。"+
-"議員倫理と党内統制が強化されました。";
+"📚 党内教育を実施。"+
+"不祥事への耐性が高まりました。";
 
 }
-
 
 if(type==="diplomacy"){
 
@@ -1016,20 +1159,18 @@ message=
 
 }
 
-
 if(type==="local"){
 
 game.support+=
-0.7*diminishing;
+0.5*diminishing;
 
 game.base+=
-1;
+1*diminishing;
 
 message=
 "🏘️ 地方活動を行いました。";
 
 }
-
 
 addNews(message,"good");
 
@@ -1038,9 +1179,9 @@ updateUI();
 }
 
 
-/* =====================================================
-   NEXT MONTH
-===================================================== */
+/* =========================
+NEXT MONTH
+========================= */
 
 function nextMonth(){
 
@@ -1091,9 +1232,9 @@ updateUI();
 }
 
 
-/* =====================================================
-   ECONOMY
-===================================================== */
+/* =========================
+ECONOMY
+========================= */
 
 function monthlyEconomy(){
 
@@ -1103,7 +1244,10 @@ let change=
 game.economy+=change;
 
 game.economy=
-Math.max(0,Math.min(100,game.economy));
+Math.max(
+0,
+Math.min(100,game.economy)
+);
 
 let priceChange=
 (Math.random()-0.35)*2;
@@ -1111,14 +1255,19 @@ let priceChange=
 game.prices+=priceChange;
 
 game.prices=
-Math.max(0,Math.min(100,game.prices));
+Math.max(
+0,
+Math.min(100,game.prices)
+);
 
+
+/* 与党だけ経済の影響を強く受ける */
 
 if(game.governing){
 
 if(game.economy>65){
 
-game.support+=1.2;
+game.support+=1.0;
 
 addNews(
 "📈 景気が改善。与党への評価が上昇しました。",
@@ -1129,10 +1278,10 @@ addNews(
 
 if(game.economy<35){
 
-game.support-=1.5;
+game.support-=1.4;
 
 addNews(
-"📉 景気停滞。与党への不満が強まっています。",
+"📉 景気が停滞。政府への不満が高まっています。",
 "bad"
 );
 
@@ -1140,7 +1289,7 @@ addNews(
 
 if(game.prices>70){
 
-game.support-=1.3;
+game.support-=1.2;
 
 addNews(
 "💴 物価高が続き、政府への不満が高まっています。",
@@ -1151,78 +1300,63 @@ addNews(
 
 }else{
 
-if(game.economy>65){
+/* 野党は逆方向に小さく反応 */
 
-game.support-=0.3;
+if(game.economy>65)
+game.support-=0.25;
 
-}
+if(game.economy<35)
+game.support+=0.6;
 
-if(game.economy<35){
-
-game.support+=0.8;
-
-}
-
-if(game.prices>70){
-
-game.support+=0.4;
-
-}
+if(game.prices>70)
+game.support+=0.25;
 
 }
 
 }
 
 
-/* =====================================================
-   POLITICS
-===================================================== */
+/* =========================
+POLITICS
+========================= */
 
 function monthlyPolitics(){
-
-/*
-野党は政府の経済政策への批判で支持を伸ばす可能性。
-与党は外交・経済・不祥事の影響を強く受ける。
-*/
 
 if(game.governing){
 
 game.support+=
-(game.diplomacy-50)*0.01;
+(game.diplomacy-50)*0.008;
 
 }else{
 
-game.support+=
-(game.economy<40?0.25:-0.05);
+if(game.economy<40)
+game.support+=0.25;
 
 }
-
-game.support=
-Math.max(0,Math.min(100,game.support));
 
 }
 
 
-/* =====================================================
-   EVENTS
-===================================================== */
+/* =========================
+EVENTS
+========================= */
 
 function randomEvent(){
 
 let r=Math.random();
 
 
-/* 不祥事 */
+/* 重大不祥事 */
 
-if(r<0.055){
+if(r<0.045){
 
 let damage=
-12+
+14+
 Math.random()*10;
 
 damage*=
 Math.max(
-0.35,
+0.3,
 1-game.scandalProtection/150
 );
 
@@ -1231,8 +1365,9 @@ game.support-=damage;
 game.base-=5;
 
 addNews(
-"🚨 重大な政治資金疑惑が発覚。支持率が大幅に低下しました。"+
-"党内教育・党内基盤が高いほど被害は軽減されます。",
+"🚨 重大な政治資金問題が発覚！"+
+"支持率が大幅に低下しました。"+
+"党内基盤・党内教育が被害を軽減します。",
 "bad"
 );
 
@@ -1243,17 +1378,17 @@ return;
 
 /* 海外戦争 */
 
-if(r<0.105){
+if(r<0.095){
 
 addNews(
-"⚔️ 海外で大規模な武力衝突が発生。日本政府は対応を迫られています。",
+"⚔️ 海外で大規模な武力衝突が発生。"+
+"日本政府は対応を迫られています。",
 "warn"
 );
 
 if(game.governing){
 
 game.diplomacy-=3;
-
 game.support-=0.5;
 
 }
@@ -1263,20 +1398,20 @@ return;
 }
 
 
-/* 首脳来日 */
+/* 海外首脳来日 */
 
-if(r<0.155){
+if(r<0.14){
 
 addNews(
-"🤝 海外首脳が来日。首脳会談と外交日程が組まれました。",
+"🤝 海外首脳が来日。"+
+"首脳会談が行われました。",
 "good"
 );
 
 if(game.governing){
 
 game.diplomacy+=4;
-
-game.support+=0.7;
+game.support+=0.5;
 
 }
 
@@ -1285,34 +1420,33 @@ return;
 }
 
 
-/* 災害 */
+/* 国内災害 */
 
-if(r<0.205){
+if(r<0.185){
 
 addNews(
-"🌧️ 国内で大規模災害が発生。政府の危機対応が注目されています。",
+"🌧️ 国内で大規模災害が発生。"+
+"政府の危機対応が注目されています。",
 "warn"
 );
 
-if(game.governing){
-
+if(game.governing)
 game.support-=1;
-
-}
 
 return;
 
 }
 
 
-/* 政権スキャンダル */
+/* 政権発言問題 */
 
-if(r<0.245 && game.governing){
+if(r<0.22 && game.governing){
 
-game.support-=4;
+game.support-=3;
 
 addNews(
-"📺 政権幹部の発言が問題となり、野党から批判が集中しています。",
+"📺 政権幹部の発言が問題となり、"+
+"野党から批判が集中しています。",
 "bad"
 );
 
@@ -1321,8 +1455,6 @@ return;
 }
 
 
-/* 通常 */
-
 addNews(
 "📺 今月は大きな政治危機は発生しませんでした。"
 );
@@ -1330,9 +1462,9 @@ addNews(
 }
 
 
-/* =====================================================
-   POLICY EVALUATION
-===================================================== */
+/* =========================
+POLICY
+========================= */
 
 function evaluatePolicy(){
 
@@ -1343,6 +1475,7 @@ document.getElementById("policyInput")
 if(!text){
 
 alert("政策を入力してください。");
+
 return;
 
 }
@@ -1354,6 +1487,7 @@ let youth=0;
 let environment=0;
 let fiscal=0;
 let diplomacy=0;
+
 
 if(
 text.includes("減税")||
@@ -1430,8 +1564,6 @@ diplomacy+=9;
 
 }
 
-let fiscalScore=
-50+fiscal;
 
 let total=
 economy+
@@ -1442,19 +1574,20 @@ environment+
 diplomacy+
 fiscal;
 
+
 let feasibility=
 Math.max(
 15,
 Math.min(
 95,
 Math.round(
-60+total*0.6-fiscalScore*0.15
+60+total*0.6
 )
 )
 );
 
-let result=
 
+let result=
 "<div class='news'>"+
 "<b>🧠 政策評価</b><br><br>"+
 "経済効果："+economy+"<br>"+
@@ -1463,47 +1596,60 @@ let result=
 "防衛："+defense+"<br>"+
 "環境："+environment+"<br>"+
 "外交："+diplomacy+"<br>"+
-"財政評価："+fiscalScore+"<br>"+
+"財政評価："+(50+fiscal)+"<br>"+
 "実現可能性："+feasibility+"%"+
 "</div>";
+
 
 if(feasibility>=70){
 
 result+=
 "<div class='news good'>"+
-"🟢 与党内で採用候補になりやすい政策です。"+
+"🟢 政策は採用候補として評価されました。"+
 "</div>";
 
 game.activePolicies.push({
- text:text,
- startYear:game.year,
- startMonth:game.month,
- delay:3,
- impact:Math.max(1,total/15)
+
+text:text,
+
+startYear:game.year,
+startMonth:game.month,
+
+delay:3,
+
+impact:
+Math.max(
+1,
+total/15
+)
+
 });
 
 }else{
 
 result+=
 "<div class='news warn'>"+
-"🟠 財政・実現性などに課題があります。修正が必要です。"+
+"🟠 財政・実現性などに課題があります。"+
 "</div>";
 
 }
 
-document.getElementById("policyResult")
+document
+.getElementById("policyResult")
 .innerHTML=result;
 
-document.getElementById("policyInput").value="";
+document
+.getElementById("policyInput")
+.value="";
 
 renderPolicies();
 
 }
 
 
-/* =====================================================
-   POLICY PROCESS
-===================================================== */
+/* =========================
+POLICY PROCESS
+========================= */
 
 function processPolicies(){
 
@@ -1514,8 +1660,7 @@ p.delay--;
 if(p.delay<=0){
 
 let impact=
-p.impact*
-0.3;
+p.impact*0.3;
 
 if(game.governing){
 
@@ -1523,9 +1668,8 @@ game.support+=impact;
 
 addNews(
 "📜 政策「"+
-p.text.substring(0,35)+
-"」の効果が現れ始めました。"+
-"政府への評価が変化しています。",
+p.text.substring(0,30)+
+"」の効果が現れ始めました。",
 "good"
 );
 
@@ -1534,7 +1678,7 @@ p.text.substring(0,35)+
 game.support+=impact*0.25;
 
 addNews(
-"📜 野党が提案した政策への反応が広がっています。"
+"📜 野党の政策提案への反応が広がっています。"
 );
 
 }
@@ -1544,40 +1688,30 @@ addNews(
 });
 
 game.activePolicies=
-game.activePolicies.filter(p=>p.delay>0);
+game.activePolicies
+.filter(p=>p.delay>0);
 
 }
 
 
-/* =====================================================
-   POLITICIANS - AGING
-===================================================== */
+/* =========================
+AGING
+========================= */
 
 function yearlyUpdate(){
 
-/*
-1年ごとに全政治家が1歳年を取る。
-*/
-
 politicians.forEach(p=>{
-
 p.age++;
-
 });
-
-
-/*
-プレイヤーも年齢上昇
-*/
 
 game.playerAge++;
 
 
-/*
-高齢政治家の引退判定
-*/
+/* 75歳以降は引退確率上昇 */
 
 politicians.forEach(p=>{
+
+if(p.retired)return;
 
 if(p.age>=75){
 
@@ -1600,18 +1734,14 @@ addNews(
 });
 
 
-/*
-新世代政治家
-*/
-
 generateYoungPolitician();
 
 }
 
 
-/* =====================================================
-   GENERATE NEW POLITICIANS
-===================================================== */
+/* =========================
+YOUNG POLITICIANS
+========================= */
 
 function generateYoungPolitician(){
 
@@ -1630,13 +1760,15 @@ const names=[
 
 ];
 
-const partyNames=
-Object.keys(parties);
-
 let name=
-names[Math.floor(Math.random()*names.length)]
-+
-" "+(Math.floor(Math.random()*90)+10);
+names[
+Math.floor(Math.random()*names.length)
+]+
+" "+
+(Math.floor(Math.random()*90)+10);
+
+let partyNames=
+Object.keys(parties);
 
 let party=
 partyNames[
@@ -1646,6 +1778,7 @@ Math.floor(Math.random()*partyNames.length)
 let age=
 25+
 Math.floor(Math.random()*15);
+
 
 politicians.push({
 
@@ -1700,17 +1833,12 @@ retired:false
 
 });
 
-addNews(
-"👶 新世代の政治家「"+name+
-"」が政界で注目され始めました。"
-);
-
 }
 
 
-/* =====================================================
-   NPC POLITICS
-===================================================== */
+/* =========================
+NPC POLITICS
+========================= */
 
 function npcPolitics(){
 
@@ -1718,54 +1846,29 @@ politicians.forEach(p=>{
 
 if(p.retired)return;
 
+if(p.ambition>80)
+p.base+=Math.random()*1.5;
 
-/*
-野心が高い政治家は党内基盤を伸ばす
-*/
+if(p.humanity>80)
+p.base+=Math.random()*0.7;
 
-if(p.ambition>80){
-
-p.base+=
-Math.random()*1.5;
-
-}
-
-
-/*
-人望が高い政治家は党内で影響力を伸ばす
-*/
-
-if(p.humanity>80){
-
-p.base+=
-Math.random()*0.7;
-
-}
-
-
-/*
-能力値上限
-*/
-
-p.base=
-Math.min(100,p.base);
+p.base=Math.min(100,p.base);
 
 });
 
 
-/*
-党首候補ニュース
-*/
-
 let candidates=
-politicians
-.filter(p=>
+politicians.filter(p=>
 !p.retired &&
 p.ambition>85 &&
 p.base>70
 );
 
-if(candidates.length>0 && Math.random()<0.05){
+
+if(
+candidates.length>0 &&
+Math.random()<0.05
+){
 
 let p=
 candidates[
@@ -1782,14 +1885,16 @@ addNews(
 }
 
 
-/* =====================================================
-   ELECTION
-===================================================== */
+/* =========================
+ELECTION
+========================= */
 
 function checkElection(){
 
-if(game.year>=game.electionYear &&
-game.month===7){
+if(
+game.year>=game.electionYear &&
+game.month===7
+){
 
 holdElection();
 
@@ -1800,31 +1905,21 @@ game.electionYear+=4;
 }
 
 
-/* =====================================================
-   ELECTION CALCULATION
-===================================================== */
-
 function holdElection(){
 
 let resultSeats=[];
+
 
 Object.keys(parties).forEach(name=>{
 
 let p=parties[name];
 
-let base=
-p.support;
+let base=p.support;
 
-if(name===game.party){
 
+if(name===game.party)
 base=game.support;
 
-}
-
-
-/*
-経済・物価・現職効果
-*/
 
 if(name===game.party){
 
@@ -1845,6 +1940,7 @@ base+=
 
 }
 
+
 let seats=
 Math.max(
 0,
@@ -1854,9 +1950,12 @@ base*4.6+
 )
 );
 
+
 resultSeats.push({
+
 party:name,
 seats:seats
+
 });
 
 });
@@ -1864,15 +1963,21 @@ seats:seats
 
 let total=
 resultSeats.reduce(
-(a,b)=>a+b.seats,0
+(a,b)=>a+b.seats,
+0
 );
+
 
 if(total>465){
 
-let scale=465/total;
+let scale=
+465/total;
 
 resultSeats.forEach(r=>{
-r.seats=Math.floor(r.seats*scale);
+
+r.seats=
+Math.floor(r.seats*scale);
+
 });
 
 }
@@ -1889,24 +1994,23 @@ playerResult.seats:
 0;
 
 
-/*
-政権判定
-*/
-
 let winner=
 resultSeats
 .slice()
 .sort((a,b)=>b.seats-a.seats)[0];
 
-if(winner.party===game.party &&
-game.seats>=233){
+
+if(
+winner.party===game.party &&
+game.seats>=233
+){
 
 game.governing=true;
 
 addNews(
-"🗳️ 選挙で勝利！「"+
+"🗳️ 選挙で勝利！"+
 game.party+
-"」が衆議院で過半数を獲得しました。",
+"が衆議院で過半数を獲得しました。",
 "good"
 );
 
@@ -1915,7 +2019,8 @@ game.party+
 game.governing=false;
 
 addNews(
-"🗳️ 選挙結果が確定しました。最大勢力は"+
+"🗳️ 選挙結果が確定。"+
+"最大勢力は"+
 winner.party+
 "です。"
 );
@@ -1923,14 +2028,12 @@ winner.party+
 }
 
 
-/*
-選挙履歴
-*/
-
 game.electionHistory.push({
 
 year:game.year,
+
 winner:winner.party,
+
 playerSeats:game.seats
 
 });
@@ -1938,21 +2041,22 @@ playerSeats:game.seats
 }
 
 
-/* =====================================================
-   LEADERSHIP
-===================================================== */
+/* =========================
+LEADERSHIP
+========================= */
 
 function startLeadershipElection(){
 
 if(!game.governing){
 
 alert(
-"与党ではないため、現在は総裁選イベントを開始できません。"
+"与党ではないため総裁選は発生しません。"
 );
 
 return;
 
 }
+
 
 let candidates=
 politicians.filter(p=>
@@ -1960,20 +2064,25 @@ p.party===game.party &&
 !p.retired
 );
 
+
 if(candidates.length===0){
 
 alert("候補者がいません。");
+
 return;
 
 }
 
+
 let best=
 candidates
 .slice()
-.sort((a,b)=>
+.sort(
+(a,b)=>
 (b.base+b.ambition+b.popularity)-
 (a.base+a.ambition+a.popularity)
 )[0];
+
 
 let chance=
 Math.round(
@@ -1983,20 +2092,25 @@ game.base*0.15+
 game.support*0.15
 );
 
+
 chance=
-Math.min(95,Math.max(5,chance));
+Math.min(
+95,
+Math.max(5,chance)
+);
+
 
 let roll=
 Math.random()*100;
 
-if(roll<chance){
 
-game.leader=game.leader;
+if(roll<chance){
 
 game.primeMinister=true;
 
 addNews(
-"👑 総裁選に勝利！あなたが党首となり、総理大臣を目指せる立場になりました。",
+"👑 総裁選に勝利！"+
+"あなたが党首となりました。",
 "good"
 );
 
@@ -2007,31 +2121,36 @@ game.leader=best.name;
 game.primeMinister=false;
 
 addNews(
-"👑 総裁選で敗北。「"+
+"👑 総裁選で敗北。"+
 best.name+
-"」が党首となりました。",
+"が党首となりました。",
 "bad"
 );
 
 }
+
 
 updateUI();
 
 }
 
 
-/* =====================================================
-   CABINET
-===================================================== */
+/* =========================
+CABINET
+========================= */
 
 function appointMinister(){
 
 if(!game.governing){
 
-alert("与党でなければ閣僚を任命できません。");
+alert(
+"与党でなければ閣僚を任命できません。"
+);
+
 return;
 
 }
+
 
 let candidates=
 politicians.filter(p=>
@@ -2039,9 +2158,9 @@ politicians.filter(p=>
 p.party===game.party
 );
 
-if(candidates.length===0)return;
 
 let jobs=[
+
 "財務大臣",
 "外務大臣",
 "防衛大臣",
@@ -2052,19 +2171,21 @@ let jobs=[
 "環境大臣",
 "国土交通大臣",
 "デジタル大臣"
+
 ];
+
 
 jobs.forEach((job,i)=>{
 
-let p=
-candidates[i%candidates.length];
-
-game.cabinet[job]=p.name;
+if(candidates.length)
+game.cabinet[job]=
+candidates[i%candidates.length].name;
 
 });
 
+
 addNews(
-"🏛️ 内閣改造を実施。各大臣を任命しました。",
+"🏛️ 内閣改造を実施しました。",
 "good"
 );
 
@@ -2073,31 +2194,9 @@ renderCabinet();
 }
 
 
-/* =====================================================
-   DIPLOMACY
-===================================================== */
-
-function renderDiplomacy(){
-
-document.getElementById("diplomacyArea")
-.innerHTML=
-
-"<p>外交関係："+Math.round(game.diplomacy)+"/100</p>"+
-"<div class='bar'><div style='width:"+
-game.diplomacy+
-"%'></div></div>"+
-"<p>"+
-(game.governing
-?"与党として外交政策が直接評価されます。"
-:"野党のため外交政策への影響は限定的です。")+
-"</p>";
-
-}
-
-
-/* =====================================================
-   PARTY INFO
-===================================================== */
+/* =========================
+RENDER PARTY
+========================= */
 
 function renderParty(){
 
@@ -2108,62 +2207,70 @@ let html=
 "<p><b>党首：</b>"+game.leader+"</p>"+
 "<p><b>政治理念：</b>"+game.philosophy+"</p>";
 
+
 if(p){
 
 html+="<h3>主要ポスト</h3>";
 
-Object.keys(p.roles||{}).forEach(role=>{
+Object.keys(p.roles||{})
+.forEach(role=>{
 
 html+=
 "<div class='badge'>"+
-role+"："+
-p.roles[role]+
+role+"："+p.roles[role]+
 "</div>";
 
 });
 
 }
 
-document.getElementById("partyInfo")
+
+document
+.getElementById("partyInfo")
 .innerHTML=html;
 
 }
 
 
-/* =====================================================
-   LEADERSHIP AREA
-===================================================== */
+/* =========================
+LEADERSHIP DISPLAY
+========================= */
 
 function renderLeadership(){
 
 let html="";
 
+
 if(game.governing){
 
 html+=
 "<p>現在、あなたの政党は与党です。</p>"+
-"<button onclick='startLeadershipElection()'>👑 総裁選を行う</button>";
+"<button onclick='startLeadershipElection()'>"+
+"👑 総裁選を行う"+
+"</button>";
 
 }else{
 
-html+=
-"<p>現在は野党です。</p>";
+html+="<p>現在は野党です。</p>";
 
 }
 
-document.getElementById("leadershipArea")
+
+document
+.getElementById("leadershipArea")
 .innerHTML=html;
 
 }
 
 
-/* =====================================================
-   CABINET AREA
-===================================================== */
+/* =========================
+CABINET DISPLAY
+========================= */
 
 function renderCabinet(){
 
 let html="";
+
 
 if(!game.governing){
 
@@ -2172,13 +2279,18 @@ html="<p>現在は野党です。</p>";
 }else{
 
 html=
-"<p>総理："+(
-game.primeMinister?
+"<p>総理："+
+
+(game.primeMinister?
 "あなた":
-"党首"
-)+
+"党首")+
+
 "</p>"+
-"<button onclick='appointMinister()'>👔 閣僚を任命・改造</button>";
+
+"<button onclick='appointMinister()'>"+
+"👔 閣僚を任命・改造"+
+"</button>";
+
 
 Object.keys(game.cabinet)
 .forEach(job=>{
@@ -2192,23 +2304,56 @@ job+"："+game.cabinet[job]+
 
 }
 
-document.getElementById("cabinetArea")
+
+document
+.getElementById("cabinetArea")
 .innerHTML=html;
 
 }
 
 
-/* =====================================================
-   POLICY DISPLAY
-===================================================== */
+/* =========================
+DIPLOMACY
+========================= */
+
+function renderDiplomacy(){
+
+document
+.getElementById("diplomacyArea")
+.innerHTML=
+
+"<p>外交関係："+Math.round(game.diplomacy)+"/100</p>"+
+
+"<div class='bar'>"+
+"<div style='width:"+
+game.diplomacy+
+"%'></div>"+
+"</div>"+
+
+"<p>"+
+(
+game.governing?
+"与党として外交政策が直接評価されます。":
+"野党のため外交政策への影響は限定的です。"
+)+
+"</p>";
+
+}
+
+
+/* =========================
+POLICY DISPLAY
+========================= */
 
 function renderPolicies(){
 
 let html="";
 
+
 if(game.activePolicies.length===0){
 
-html="<p>現在、実行中の政策はありません。</p>";
+html=
+"<p>現在、実行中の政策はありません。</p>";
 
 }else{
 
@@ -2217,8 +2362,11 @@ game.activePolicies.forEach(p=>{
 html+=
 "<div class='news'>"+
 p.text+
-"<br><span class='small'>"+
-"効果発現まで約"+p.delay+"か月"+
+"<br>"+
+"<span class='small'>"+
+"効果発現まで約"+
+p.delay+
+"か月"+
 "</span>"+
 "</div>";
 
@@ -2226,344 +2374,9 @@ p.text+
 
 }
 
-document.getElementById("activePolicies")
+
+document
+.getElementById("activePolicies")
 .innerHTML=html;
 
 }
-
-
-/* =====================================================
-   POLITICIAN DISPLAY
-===================================================== */
-
-function renderPoliticians(){
-
-let html="";
-
-politicians
-.filter(p=>!p.retired)
-.forEach(p=>{
-
-html+=
-"<div class='politician'>"+
-"<b>"+p.name+"</b>"+
-"　<span class='badge'>"+p.party+"</span>"+
-"　<span class='badge'>"+p.role+"</span>"+
-"<br>"+
-"<span class='badge'>"+p.age+"歳</span>"+
-"<span class='badge'>保守 "+p.conservative+"</span>"+
-"<span class='badge'>リベラル "+p.liberal+"</span>"+
-"<span class='badge'>政策 "+p.policy+"</span>"+
-"<span class='badge'>経済 "+p.economy+"</span>"+
-"<span class='badge'>外交 "+p.diplomacy+"</span>"+
-"<span class='badge'>防衛 "+p.defense+"</span>"+
-"<span class='badge'>国会 "+p.parliament+"</span>"+
-"<span class='badge'>演説 "+p.speech+"</span>"+
-"<span class='badge'>人気 "+p.popularity+"</span>"+
-"<span class='badge'>人望 "+p.humanity+"</span>"+
-"<span class='badge'>党内基盤 "+Math.round(p.base)+"</span>"+
-"<span class='badge'>実行力 "+p.execution+"</span>"+
-"<span class='badge'>危機対応 "+p.crisis+"</span>"+
-"<span class='badge'>野心 "+p.ambition+"</span>"+
-"</div>";
-
-});
-
-
-/*
-引退者
-*/
-
-let retired=
-politicians.filter(p=>p.retired);
-
-if(retired.length){
-
-html+="<h3>政界引退者</h3>";
-
-retired.forEach(p=>{
-
-html+=
-"<div class='news'>"+
-"👴 "+p.name+
-"（"+p.age+"歳）"+
-"：政界引退"+
-"</div>";
-
-});
-
-}
-
-document.getElementById("politicians")
-.innerHTML=html;
-
-}
-
-
-/* =====================================================
-   NEWS
-===================================================== */
-
-function addNews(text,type=""){
-
-game.news.unshift({
-year:game.year,
-month:game.month,
-text:text,
-type:type
-});
-
-if(game.news.length>80){
-
-game.news.pop();
-
-}
-
-renderNews();
-
-}
-
-
-function renderNews(){
-
-let html="";
-
-game.news.forEach(n=>{
-
-html+=
-"<div class='news "+n.type+"'>"+
-"<span class='small'>"+
-n.year+"年"+n.month+"月"+
-"</span><br>"+
-n.text+
-"</div>";
-
-});
-
-document.getElementById("news")
-.innerHTML=html;
-
-}
-
-
-/* =====================================================
-   UI
-===================================================== */
-
-function updateUI(){
-
-game.support=
-Math.max(0,Math.min(100,game.support));
-
-game.base=
-Math.max(0,Math.min(100,game.base));
-
-game.diplomacy=
-Math.max(0,Math.min(100,game.diplomacy));
-
-document.getElementById("partyTitle")
-.textContent=
-game.party+
-" / "+game.leader;
-
-document.getElementById("headerDate")
-.textContent=
-game.year+"年"+game.month+"月";
-
-document.getElementById("date")
-.textContent=
-game.year+"年"+game.month+"月";
-
-document.getElementById("support")
-.textContent=
-game.support.toFixed(1);
-
-document.getElementById("supportBar")
-.style.width=
-game.support+"%";
-
-document.getElementById("seats")
-.textContent=
-game.seats;
-
-document.getElementById("actions")
-.textContent=
-game.actions;
-
-document.getElementById("base")
-.textContent=
-Math.round(game.base);
-
-document.getElementById("economy")
-.textContent=
-Math.round(game.economy);
-
-document.getElementById("prices")
-.textContent=
-Math.round(game.prices);
-
-
-if(game.support>=65){
-
-document.getElementById("supportText")
-.textContent=
-"🔥 非常に高い支持を得ています。";
-
-}else if(game.support>=50){
-
-document.getElementById("supportText")
-.textContent=
-"📈 比較的高い支持を得ています。";
-
-}else if(game.support>=30){
-
-document.getElementById("supportText")
-.textContent=
-"⚖️ 支持は拮抗しています。";
-
-}else{
-
-document.getElementById("supportText")
-.textContent=
-"📉 支持率は低迷しています。";
-
-}
-
-
-document.getElementById("status")
-.innerHTML=
-"立場："+
-(game.governing?"🟢 与党":"🔵 野党")+
-"<br>"+
-"党首："+game.leader+
-"<br>"+
-"あなたの年齢："+game.playerAge+"歳"+
-"<br>"+
-"政治資金・倫理対策："+Math.round(game.scandalProtection)+
-"<br>"+
-"政治資本："+Math.round(game.politicalCapital);
-
-
-renderParty();
-renderLeadership();
-renderCabinet();
-renderDiplomacy();
-renderElection();
-renderPolicies();
-renderPoliticians();
-renderNews();
-
-}
-
-
-/* =====================================================
-   ELECTION DISPLAY
-===================================================== */
-
-function renderElection(){
-
-let html=
-"<p>次回予定選挙："+game.electionYear+"年7月</p>";
-
-if(game.electionHistory.length){
-
-html+="<h3>過去の選挙</h3>";
-
-game.electionHistory
-.slice()
-.reverse()
-.forEach(e=>{
-
-html+=
-"<div class='news'>"+
-e.year+"年選挙："+
-"最大勢力 "+e.winner+
-"<br>あなたの党："+e.playerSeats+"議席"+
-"</div>";
-
-});
-
-}
-
-document.getElementById("electionArea")
-.innerHTML=html;
-
-}
-
-
-/* =====================================================
-   SAVE
-===================================================== */
-
-function saveGame(){
-
-localStorage.setItem(
-"nihonSeijiSave",
-JSON.stringify(game)
-);
-
-alert("ゲームを保存しました。");
-
-}
-
-
-function loadGame(){
-
-let saved=
-localStorage.getItem("nihonSeijiSave");
-
-if(!saved){
-
-alert("セーブデータがありません。");
-return;
-
-}
-
-game=
-JSON.parse(saved);
-
-document.getElementById("setup")
-.classList.add("hidden");
-
-document.getElementById("game")
-.classList.remove("hidden");
-
-updateUI();
-
-}
-
-
-/* =====================================================
-   AUTO SAVE
-===================================================== */
-
-setInterval(()=>{
-
-if(!document
-.getElementById("game")
-.classList.contains("hidden")){
-
-localStorage.setItem(
-"nihonSeijiAutoSave",
-JSON.stringify(game)
-);
-
-}
-
-},30000);
-
-
-/* =====================================================
-   KEYBOARD / MOBILE START
-===================================================== */
-
-game.politicsBonus=0;
-
-
-/* =====================================================
-   START SCREEN BUTTONS
-===================================================== */
-
-</script>
-</body>
-</html>
