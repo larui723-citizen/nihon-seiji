@@ -2771,8 +2771,70 @@ function getPoliticalPressures(){
  };
 }
 
+function getPolicyDomainPressures(){
+ const p=getPoliticalPressures();
+
+ return {
+  economy:(
+   (p.inflation?2:0)+
+   (p.recession?3:0)+
+   (p.unemployment?2:0)+
+   (p.wageGrowth?1:0)+
+   (p.yenWeakness?2:0)+
+   (p.energyCost?1:0)
+  ),
+
+  taxation:(
+   (p.inflation?2:0)+
+   (p.recession?2:0)+
+   (p.yenWeakness?1:0)
+  ),
+
+  welfare:(
+   (p.unemployment?1:0)+
+   (p.aging?3:0)
+  ),
+
+  education:(
+   (p.birthDecline?2:0)+
+   (p.aging?1:0)
+  ),
+
+  childcare:(
+   (p.birthDecline?4:0)+
+   (p.wageGrowth?1:0)
+  ),
+
+  diplomacy:(
+   (p.yenWeakness?1:0)+
+   (p.foreignSecurity?3:0)
+  ),
+
+  defense:(
+   (p.foreignSecurity?4:0)+
+   (p.crime?1:0)
+  ),
+
+  energy:(
+   (p.energyCost?4:0)+
+   (p.yenWeakness?2:0)+
+   (p.inflation?1:0)
+  ),
+
+  environment:(
+   0
+  ),
+
+  constitutionalReform:(
+   (p.foreignSecurity?1:0)+
+   (p.crime?1:0)
+  )
+ };
+
+}
+
 function monthlyUpdate(){
-const e=state.economy;
+ const e=state.economy;
 e.nikkei+=rint(-900,1100);
 e.cpi=clamp(e.cpi+rand(-.25,.25),-1,8);
 e.gasoline=clamp(e.gasoline+rint(-5,6),130,230);
