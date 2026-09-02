@@ -2590,9 +2590,8 @@ function updatePopulationStats(){
 }
 
 function updatePartyPledgePressure(){
- PARTIES.forEach(p=>{
-  const party=state.parties[p.id];
-  if(!party)return;
+ Object.values(state.parties).forEach(party=>{
+  if(!party?.pledges)return;
 
   if(!party.pledgeDynamics){
    party.pledgeDynamics={
