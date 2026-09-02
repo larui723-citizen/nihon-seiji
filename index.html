@@ -1561,7 +1561,7 @@ function renderParty(){
  </div>
  </div>
 
- <div class="col12 card gradient">
+<div class="col12 card gradient">
  <div class="section-title">
   <div>
    <h2>各政党の公約</h2>
@@ -1578,65 +1578,65 @@ function renderParty(){
     type="button"
     data-action="selectPledgeParty"
     data-party="${p.id}"
+    class="${(state.selectedPledgeParty||pp.id)===p.id?"active":""}"
    >
     ${esc(p.short)}
    </button>
   `).join("")}
  </div>
 
- <div class="list">
- ${Object.keys(pledgeLabels).map(key=>`
-  <div class="row" style="display:block">
-   <div class="section-title" style="margin:0 0 8px">
-    <b>${pledgeLabels[key]}</b>
-    <span class="badge ${
-  typeof pp.pledges?.[key]==="number"
-    ?pp.pledges[key]>=85
-      ?"green"
-      :pp.pledges[key]>=70
-        ?"cyan"
-        :pp.pledges[key]>=55
-          ?"yellow"
-          :pp.pledges[key]>=40
-            ?"yellow"
-            :pp.pledges[key]>=25
-              ?"red"
-              :"red"
-    :""
-}">
- ${
-  typeof pp.pledges?.[key]==="number"
-    ?pp.pledges[key]>=85
-      ?"最重要政策"
-      :pp.pledges[key]>=70
-        ?"積極推進"
-        :pp.pledges[key]>=55
-          ?"推進"
-          :pp.pledges[key]>=40
-            ?"慎重"
-            :pp.pledges[key]>=25
-              ?"抑制的"
-              :"強く反対"
-    :"未設定"
- }
-</span>
-   </div>
+ ${(()=>{
+   const selectedId=state.selectedPledgeParty||pp.id;
+   const selected=state.parties[selectedId]||pp;
 
-   <div class="bar">
-    <span style="width:${clamp(
-      Number(pp.pledges?.[key]||0),
-      0,
-      100
-    )}%"></span>
-   </div>
+   return `
+   <div class="list">
+   ${Object.keys(pledgeLabels).map(key=>`
+    <div class="row" style="display:block">
+     <div class="section-title" style="margin:0 0 8px">
+      <b>${pledgeLabels[key]}</b>
+      <span class="badge ${
+       typeof selected.pledges?.[key]==="number"
+        ?selected.pledges[key]>=85
+          ?"green"
+          :selected.pledges[key]>=70
+            ?"cyan"
+            :selected.pledges[key]>=55
+              ?"yellow"
+              :selected.pledges[key]>=40
+                ?"yellow"
+                :selected.pledges[key]>=25
+                  ?"red"
+                  :"red"
+        :""
+      }">
+       ${
+        typeof selected.pledges?.[key]==="number"
+         ?selected.pledges[key]>=85
+           ?"最重要政策"
+           :selected.pledges[key]>=70
+             ?"積極推進"
+             :selected.pledges[key]>=55
+               ?"推進"
+               :selected.pledges[key]>=40
+                 ?"慎重"
+                 :selected.pledges[key]>=25
+                   ?"抑制的"
+                   :"強く反対"
+         :"未設定"
+       }
+      </span>
+     </div>
 
-   <div class="muted" style="margin-top:8px">
-    ${esc(pp.pledgeTexts?.[key]||"公約はまだ設定されていません。")}
+     <div class="muted" style="margin-top:8px">
+      ${esc(selected.pledgeTexts?.[key]||"公約はまだ設定されていません。")}
+     </div>
+    </div>
+   `).join("")}
    </div>
-  </div>
- `).join("")}
- </div>
- </div>
+   `;
+ })()}
+</div>
 
  </div>`;
 }
