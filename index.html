@@ -1439,100 +1439,145 @@ ${list.map(n=>`
 
 function renderEconomy(){
 const e=state.economy;
-const data=[
-  // 基本経済
-  ["日経平均",fmt(e.nikkei,0),"円"],
-  ["消費者物価上昇率",fmt(e.cpi),"％"],
-  ["ガソリン価格",fmt(e.gasoline,0),"円/L"],
-  ["コメ価格",fmt(e.rice,0),"円/5kg"],
-  ["魚介類価格指数",fmt(e.seafood),"pt"],
-  ["政策金利",fmt(e.rate),"％"],
-  ["失業率",fmt(e.unemployment),"％"],
-  ["賃金上昇率",fmt(e.wage),"％"],
-  ["ドル円",fmt(e.usdjpy,0),"円"],
-  ["犯罪指数",fmt(e.crime),"pt"],
-  ["暴力犯罪認知件数",fmt(e.violentCrime,0),"件"],
-  ["外国籍容疑者が関与した事件数",fmt(e.foreignCases,0),"件"],
 
-  // GDP・国民所得
-  ["GDP",fmt(e.gdp,1),"兆円"],
-  ["名目GDP",fmt(e.nominalGDP,1),"兆円"],
-  ["実質GDP",fmt(e.realGDP,1),"兆円"],
-  ["GDP成長率",fmt(e.gdpGrowth,2),"％/年"],
-  ["一人当たりGDP",fmt(e.perCapitaGDP,1),"万円/人"],
-  ["GDPデフレーター",fmt(e.gdpDeflator,2),"pt"],
-  ["GNI",fmt(e.gni,1),"兆円"],
-  ["一人当たりGNI",fmt(e.perCapitaGNI,1),"万円/人"],
-  ["潜在GDP",fmt(e.potentialGDP,1),"兆円"],
-  ["GDPギャップ",fmt(e.gdpGap,2),"％"],
+const categories={
+  "基本経済":[
+    ["日経平均",fmt(e.nikkei,0),"円"],
+    ["消費者物価上昇率",fmt(e.cpi),"％"],
+    ["ガソリン価格",fmt(e.gasoline,0),"円/L"],
+    ["コメ価格",fmt(e.rice,0),"円/5kg"],
+    ["魚介類価格指数",fmt(e.seafood),"pt"],
+    ["政策金利",fmt(e.rate),"％"],
+    ["失業率",fmt(e.unemployment),"％"],
+    ["賃金上昇率",fmt(e.wage),"％"],
+    ["ドル円",fmt(e.usdjpy,0),"円"],
+    ["犯罪指数",fmt(e.crime),"pt"],
+    ["暴力犯罪認知件数",fmt(e.violentCrime,0),"件"],
+    ["外国籍容疑者が関与した事件数",fmt(e.foreignCases,0),"件"]
+  ],
 
-  // 労働・雇用
-  ["労働力人口",fmt(e.laborForce,0),"万人"],
-  ["就業者数",fmt(e.employed,0),"万人"],
-  ["有効求人倍率",fmt(e.jobOfferRatio,2),"倍"],
-  ["実質賃金",fmt(e.realWage,1),"指数"],
-  ["労働生産性",fmt(e.productivity,1),"指数"],
-  ["非正規雇用率",fmt(e.nonRegularRate,1),"％"],
-  ["最低賃金",fmt(e.minimumWage,0),"円/時"],
+  "GDP・国民所得":[
+    ["GDP",fmt(e.gdp,1),"兆円"],
+    ["名目GDP",fmt(e.nominalGDP,1),"兆円"],
+    ["実質GDP",fmt(e.realGDP,1),"兆円"],
+    ["GDP成長率",fmt(e.gdpGrowth,2),"％/年"],
+    ["一人当たりGDP",fmt(e.perCapitaGDP,1),"万円/人"],
+    ["GDPデフレーター",fmt(e.gdpDeflator,2),"pt"],
+    ["GNI",fmt(e.gni,1),"兆円"],
+    ["一人当たりGNI",fmt(e.perCapitaGNI,1),"万円/人"],
+    ["潜在GDP",fmt(e.potentialGDP,1),"兆円"],
+    ["GDPギャップ",fmt(e.gdpGap,2),"％"]
+  ],
 
-  // 人口・社会
-  ["総人口",fmt(e.population,1),"百万人"],
-  ["生産年齢人口",fmt(e.workingAgePopulation,1),"百万人"],
-  ["高齢化率",fmt(e.agingRate,1),"％"],
-  ["合計特殊出生率",fmt(e.birthRate,2),"人/女性1人"],
-  ["出生数",fmt(e.births,0),"人/年"],
-  ["死亡数",fmt(e.deaths,0),"人/年"],
-    ["純移入",fmt(e.netMigration,0),"人/年"],
+  "労働・雇用":[
+    ["労働力人口",fmt(e.laborForce,0),"万人"],
+    ["就業者数",fmt(e.employed,0),"万人"],
+    ["有効求人倍率",fmt(e.jobOfferRatio,2),"倍"],
+    ["実質賃金",fmt(e.realWage,1),"指数"],
+    ["労働生産性",fmt(e.productivity,1),"指数"],
+    ["非正規雇用率",fmt(e.nonRegularRate,1),"％"],
+    ["最低賃金",fmt(e.minimumWage,0),"円/時"]
+  ],
 
-  // 財政
-  ["税収",fmt(e.taxRevenue,1),"兆円"],
-  ["政府支出",fmt(e.governmentSpending,1),"兆円"],
-  ["財政収支",fmt(e.fiscalBalance,1),"兆円"],
-  ["政府債務",fmt(e.governmentDebt,1),"兆円"],
-  ["債務残高GDP比",fmt(e.debtToGDP,1),"％"],
-  ["社会保障費",fmt(e.socialSecuritySpending,1),"兆円"],
+  "人口・社会":[
+    ["総人口",fmt(e.population,1),"百万人"],
+    ["生産年齢人口",fmt(e.workingAgePopulation,1),"百万人"],
+    ["高齢化率",fmt(e.agingRate,1),"％"],
+    ["合計特殊出生率",fmt(e.birthRate,2),"人/女性1人"],
+    ["出生数",fmt(e.births,0),"人/年"],
+    ["死亡数",fmt(e.deaths,0),"人/年"],
+    ["純移入",fmt(e.netMigration,0),"人/年"]
+  ],
 
-  // 企業・貿易
-  ["企業利益",fmt(e.corporateProfits,1),"兆円"],
-  ["設備投資",fmt(e.businessInvestment,1),"兆円"],
-  ["輸出",fmt(e.exports,1),"兆円"],
-  ["輸入",fmt(e.imports,1),"兆円"],
-  ["貿易収支",fmt(e.tradeBalance,1),"兆円"],
-  ["経常収支",fmt(e.currentAccount,1),"兆円"],
-  ["倒産件数",fmt(e.bankruptcies,0),"件/年"],
+  "財政":[
+    ["税収",fmt(e.taxRevenue,1),"兆円"],
+    ["政府支出",fmt(e.governmentSpending,1),"兆円"],
+    ["財政収支",fmt(e.fiscalBalance,1),"兆円"],
+    ["政府債務",fmt(e.governmentDebt,1),"兆円"],
+    ["債務残高GDP比",fmt(e.debtToGDP,1),"％"],
+    ["社会保障費",fmt(e.socialSecuritySpending,1),"兆円"]
+  ],
 
-  // 格差・生活
-  ["所得中央値",fmt(e.medianIncome,1),"万円/年"],
-  ["ジニ係数",fmt(e.gini,2),"係数"],
-  ["貧困率",fmt(e.povertyRate,1),"％"],
-  ["可処分所得",fmt(e.disposableIncome,1),"万円/年"],
-  ["住宅価格",fmt(e.housingPrice,1),"指数"],
+  "企業・貿易":[
+    ["企業利益",fmt(e.corporateProfits,1),"兆円"],
+    ["設備投資",fmt(e.businessInvestment,1),"兆円"],
+    ["輸出",fmt(e.exports,1),"兆円"],
+    ["輸入",fmt(e.imports,1),"兆円"],
+    ["貿易収支",fmt(e.tradeBalance,1),"兆円"],
+    ["経常収支",fmt(e.currentAccount,1),"兆円"],
+    ["倒産件数",fmt(e.bankruptcies,0),"件/年"]
+  ],
 
-  // エネルギー・環境
-  ["電力価格",fmt(e.electricityPrice,1),"円/kWh"],
-  ["電力需要",fmt(e.electricityDemand,1),"TWh/年"],
-  ["原油価格",fmt(e.oilPrice,1),"USD/バレル"],
-  ["CO₂排出量",fmt(e.co2Emissions,1),"Mt-CO₂/年"],
-  ["再エネ比率",fmt(e.renewableRate,1),"％"],
+  "格差・生活":[
+    ["所得中央値",fmt(e.medianIncome,1),"万円/年"],
+    ["ジニ係数",fmt(e.gini,2),"係数"],
+    ["貧困率",fmt(e.povertyRate,1),"％"],
+    ["可処分所得",fmt(e.disposableIncome,1),"万円/年"],
+    ["住宅価格",fmt(e.housingPrice,1),"指数"]
+  ],
 
-  // 教育・医療
-  ["教育支出",fmt(e.educationSpending,1),"%GDP"],
-  ["研究開発費",fmt(e.rdSpending,1),"%GDP"],
-  ["医療費",fmt(e.healthcareSpending,1),"兆円/年"],
-  ["医師数",fmt(e.doctors,0),"人"],
+  "エネルギー・環境":[
+    ["電力価格",fmt(e.electricityPrice,1),"円/kWh"],
+    ["電力需要",fmt(e.electricityDemand,1),"TWh/年"],
+    ["原油価格",fmt(e.oilPrice,1),"USD/バレル"],
+    ["CO₂排出量",fmt(e.co2Emissions,1),"Mt-CO₂/年"],
+    ["再エネ比率",fmt(e.renewableRate,1),"％"]
+  ],
 
-  // 外交・防衛
-  ["防衛費",fmt(e.defenseSpending,1),"兆円/年"],
-  ["防衛費GDP比",fmt(e.defenseSpendingGDP,1),"％"],
-  ["ODA",fmt(e.oda,1),"兆円/年"],
-  ["外貨準備",fmt(e.foreignReserves,1),"兆USD"]
-];
+  "教育・医療":[
+    ["教育支出",fmt(e.educationSpending,1),"%GDP"],
+    ["研究開発費",fmt(e.rdSpending,1),"%GDP"],
+    ["医療費",fmt(e.healthcareSpending,1),"兆円/年"],
+    ["医師数",fmt(e.doctors,0),"人"]
+  ],
+
+  "外交・防衛":[
+    ["防衛費",fmt(e.defenseSpending,1),"兆円/年"],
+    ["防衛費GDP比",fmt(e.defenseSpendingGDP,1),"％"],
+    ["ODA",fmt(e.oda,1),"兆円/年"],
+    ["外貨準備",fmt(e.foreignReserves,1),"兆USD"]
+  ]
+};
+
+const tabs=Object.keys(categories);
+const active=state.economyTab&&categories[state.economyTab]
+  ? state.economyTab
+  : tabs[0];
+
+state.economyTab=active;
+
+const data=categories[active];
+
 return `
 <div class="grid">
+
 <div class="col12 card gradient">
 <h2>経済・社会統計</h2>
 <div class="muted">ゲーム内シミュレーション数値。政策やランダムイベントで変動します。</div>
 </div>
+
+<div class="col12 card" style="overflow:hidden;">
+<div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;">
+${tabs.map(tab=>`
+<button
+  class="clickable"
+  data-action="economyTab"
+  data-tab="${tab}"
+  style="
+    white-space:nowrap;
+    padding:10px 16px;
+    border-radius:8px;
+    border:1px solid ${active===tab ? "#4da3ff" : "#34495e"};
+    background:${active===tab ? "#183b63" : "#111c2b"};
+    color:${active===tab ? "#ffffff" : "#9eb1c9"};
+    font-weight:${active===tab ? "800" : "600"};
+    cursor:pointer;
+  "
+>${tab}</button>
+`).join("")}
+</div>
+</div>
+
 ${data.map((x,i)=>`
 <div class="col3 card">
 <div class="muted">${x[0]}</div>
@@ -1555,6 +1600,7 @@ ${data.map((x,i)=>`
 重大な事件ほど発生確率は低く設定されています。
 </div>
 </div>
+
 </div>`;
 }
   function drawGDPChart(){
