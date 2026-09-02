@@ -3056,21 +3056,59 @@ scores[c.id]=score;
 const winner=Object.keys(scores).sort((a,b)=>scores[b]-scores[a])[0];
 
 if(winner==="player"){
-pp.leaderId="player";
-state.player.internalTitle="党首";
-state.personal.internalSupport=80;
-state.leadership.active=false;
-log("党首選に勝利し、あなたが党首になった。");
-closeModal();
-render();
-showToast("党首選に勝利しました！");
+ pp.leaderId="player";
+ state.player.internalTitle="党首";
+ state.personal.internalSupport=80;
+
+ state.leadership.termStart={
+  year:state.date.year,
+  month:state.date.month
+ };
+
+ state.leadership.termEnd={
+  year:state.date.year+3,
+  month:state.date.month
+ };
+
+ state.leadership.scheduledElection={
+  year:state.date.year+3,
+  month:state.date.month
+ };
+
+ state.leadership.emergency=false;
+ state.leadership.emergencyReason=null;
+ state.leadership.active=false;
+
+ log("党首選に勝利し、あなたが党首になった。");
+ closeModal();
+ render();
+ showToast("党首選に勝利しました！");
 }else{
-pp.leaderId=winner;
-state.leadership.active=false;
-log("党首選で"+candidateName(winner)+"が勝利した。");
-closeModal();
-render();
-showToast("党首選は"+candidateName(winner)+"が勝利しました。");
+ pp.leaderId=winner;
+
+ state.leadership.termStart={
+  year:state.date.year,
+  month:state.date.month
+ };
+
+ state.leadership.termEnd={
+  year:state.date.year+3,
+  month:state.date.month
+ };
+
+ state.leadership.scheduledElection={
+  year:state.date.year+3,
+  month:state.date.month
+ };
+
+ state.leadership.emergency=false;
+ state.leadership.emergencyReason=null;
+ state.leadership.active=false;
+
+ log("党首選で"+candidateName(winner)+"が勝利した。");
+ closeModal();
+ render();
+ showToast("党首選は"+candidateName(winner)+"が勝利しました。");
 }
 }
 
