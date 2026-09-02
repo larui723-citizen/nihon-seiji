@@ -1897,9 +1897,22 @@ function updatePopulationStats(){
   const e=state.economy;
 
   if(typeof e.population!=="number")e.population=123.5;
+  if(typeof e.birthRate!=="number")e.birthRate=1.20;
   if(typeof e.births!=="number")e.births=680000;
   if(typeof e.deaths!=="number")e.deaths=1600000;
   if(typeof e.netMigration!=="number")e.netMigration=180000;
+
+  // TFRから出生数を計算
+  // 日本の出生数は、出生可能年齢の女性人口とTFRによって決まる
+  const women15to49=e.population*0.20*0.50;
+
+  const targetAnnualBirths=
+    women15to49*1000000*e.birthRate;
+
+  // 現実の人口統計は急変しないため、出生数を徐々に調整
+  e.births=
+    e.births*0.98+
+    targetAnnualBirths*0.02;
 
   // 出生・死亡・純移入による年間人口増減
   const annualChange=
@@ -1913,6 +1926,7 @@ function updatePopulationStats(){
 
   if(e.population<0)e.population=0;
 
+  e.births=Math.round(e.births);
   e.population=Number(e.population.toFixed(3));
 }
 function monthlyUpdate(){
