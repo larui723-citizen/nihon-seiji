@@ -2934,9 +2934,7 @@ state.parties[p.id].support+rand(-.8,.8),
 );
 });
 
-if(state.isLeadership){
 leadershipMonthlyCheck();
-}
 
 if(state.date.month===3 || state.date.month===9){
 if(isLeader())maybeCreateTalk();
@@ -3120,14 +3118,21 @@ function leadershipMonthlyCheck(){
   return;
  }
 
+ const scheduled=state.leadership.scheduledElection;
+
  if(
-  state.leadership.scheduledElection &&
-  state.date >= state.leadership.scheduledElection
+  scheduled &&
+  (
+   state.date.year>scheduled.year ||
+   (
+    state.date.year===scheduled.year &&
+    state.date.month>=scheduled.month
+   )
+  )
  ){
   leadershipPrepare();
  }
 }
-
 /* =========================================================
 法案
 ========================================================= */
