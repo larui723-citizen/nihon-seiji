@@ -1909,37 +1909,30 @@ function updatePopulationStats(){
   const baseBirths=680000;
   const baseDeaths=1600000;
   const baseAgingRate=29.3;
+  const baseNetMigration=180000;
 
   // -------------------------
   // 合計特殊出生率（TFR）
   // -------------------------
-  // 経済・生活環境から出生率への圧力を計算
   let birthRatePressure=0;
 
-  // 賃金が高いほど出生率を押し上げる
   if(typeof e.wage==="number"){
     birthRatePressure+=(e.wage-3.0)*0.003;
   }
 
-  // 失業率が高いほど出生率を押し下げる
   if(typeof e.unemployment==="number"){
     birthRatePressure-=(e.unemployment-2.5)*0.004;
   }
 
-  // 住宅価格が高いほど出生率を押し下げる
   if(typeof e.housingPrice==="number"){
     birthRatePressure-=(e.housingPrice-100)*0.0005;
   }
 
-  // 可処分所得が高いほど出生率を押し上げる
   if(typeof e.disposableIncome==="number"){
     birthRatePressure+=(e.disposableIncome-300)*0.0005;
   }
 
-  // TFRは急激には変化しない
   e.birthRate+=birthRatePressure*0.02;
-
-  // 現実的な範囲に制限
   e.birthRate=clamp(e.birthRate,0.70,2.00);
 
   // -------------------------
@@ -1967,6 +1960,46 @@ function updatePopulationStats(){
     targetAnnualDeaths*0.02;
 
   // -------------------------
+  // 純移入
+  // -------------------------
+  let migrationPressure=0;
+
+  // 賃金が高いほど流入しやすい
+  if(typeof e.wage==="number"){
+    migrationPressure+=(e.wage-3.0)*0.08;
+  }
+
+  // 失業率が高いほど流入しにくい
+  if(typeof e.unemployment==="number"){
+    migrationPressure-=(e.unemployment-2.5)*0.10;
+  }
+
+  // GDP成長率が高いほど流入しやすい
+  if(typeof e.gdpGrowth==="number"){
+    migrationPressure+=(e.gdpGrowth-1.2)*0.05;
+  }
+
+  // 円安が進みすぎると海外から見た日本の所得価値が下がる
+  if(typeof e.usdjpy==="number"){
+    migrationPressure-=(e.usdjpy-148)*0.003;
+  }
+
+  // 基準値から徐々に変化
+  const targetNetMigration=
+    baseNetMigration*(1+migrationPressure);
+
+  e.netMigration=
+    e.netMigration*0.98+
+    targetNetMigration*0.02;
+
+  // 極端な値にならないようにする
+  e.netMigration=clamp(
+    e.netMigration,
+    -500000,
+    500000
+  );
+
+  // -------------------------
   // 人口増減
   // -------------------------
   const annualChange=
@@ -1983,6 +2016,7 @@ function updatePopulationStats(){
   e.birthRate=Number(e.birthRate.toFixed(3));
   e.births=Math.round(e.births);
   e.deaths=Math.round(e.deaths);
+  e.netMigration=Math.round(e.netMigration);
   e.population=Number(e.population.toFixed(3));
 }
 function monthlyUpdate(){
