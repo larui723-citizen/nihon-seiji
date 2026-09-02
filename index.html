@@ -1901,40 +1901,50 @@ function updatePopulationStats(){
   if(typeof e.births!=="number")e.births=680000;
   if(typeof e.deaths!=="number")e.deaths=1600000;
   if(typeof e.netMigration!=="number")e.netMigration=180000;
+  if(typeof e.agingRate!=="number")e.agingRate=29.3;
 
-  // TFRから出生数を計算
-  // 日本の出生数は、出生可能年齢の女性人口とTFRによって決まる
-  const women15to49=e.population*0.20*0.50;
+  // 基準値
+  const basePopulation=123.5;
+  const baseBirthRate=1.20;
+  const baseBirths=680000;
+  const baseDeaths=1600000;
+  const baseAgingRate=29.3;
 
+  // -------------------------
+  // 出生数
+  // -------------------------
+  // 人口・TFRに応じて出生数を変化させる
   const targetAnnualBirths=
-    women15to49*1000000*e.birthRate;
+    baseBirths*
+    (e.population/basePopulation)*
+    (e.birthRate/baseBirthRate);
 
-  // 現実の人口統計は急変しないため、出生数を徐々に調整
+  // 出生数は急激には変化しない
   e.births=
     e.births*0.98+
     targetAnnualBirths*0.02;
 
-  // 高齢化率・総人口から死亡数を計算
-  // 高齢者が多い社会ほど年間死亡数が増えやすい
-  const elderlyRate=
-    typeof e.agingRate==="number"
-      ? e.agingRate
-      : 29.3;
-
+  // -------------------------
+  // 死亡数
+  // -------------------------
+  // 人口と高齢化率に応じて死亡数を変化させる
   const targetAnnualDeaths=
-    e.population*1000000*
-    (0.006+elderlyRate*0.00018);
+    baseDeaths*
+    (e.population/basePopulation)*
+    (e.agingRate/baseAgingRate);
 
-  // 死亡数も急変せず、徐々に調整
+  // 死亡数も徐々に変化
   e.deaths=
     e.deaths*0.98+
     targetAnnualDeaths*0.02;
 
-  // 出生・死亡・純移入による年間人口増減
+  // -------------------------
+  // 人口増減
+  // -------------------------
   const annualChange=
     e.births-e.deaths+e.netMigration;
 
-  // 1か月分に換算（人 → 百万人）
+  // 1か月分に換算
   const monthlyChange=
     annualChange/12/1000000;
 
@@ -1942,6 +1952,7 @@ function updatePopulationStats(){
 
   if(e.population<0)e.population=0;
 
+  // 表示用に丸める
   e.births=Math.round(e.births);
   e.deaths=Math.round(e.deaths);
   e.population=Number(e.population.toFixed(3));
