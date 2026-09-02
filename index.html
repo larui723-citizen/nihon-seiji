@@ -1458,56 +1458,155 @@ return `
 }
 
 function renderParty(){
-const pp=getPlayerParty();
-const members=pp?.members||[];
-const ordinary=state.partyMembers[pp.id]||[];
+ const pp=getPlayerParty();
+ const members=pp?.members||[];
+ const ordinary=state.partyMembers[pp.id]||[];
 
-return `
-<div class="grid">
-<div class="col8 card gradient">
-<div class="section-title">
-<div><h2>${esc(pp.name)}</h2><div class="muted">${esc(pp.short)} / 党支持率 ${fmt(pp.published)}%</div></div>
-<span class="badge ${isLeader()?"purple":"cyan"}">${isLeader()?"あなたが党首":"党首："+esc(getPolitician(pp.leaderId)?.name||"未定")}</span>
-</div>
-<div class="kpis">
-<div class="kpi cyan"><div class="label">党支持率</div><div class="value">${fmt(pp.published)}%</div></div>
-<div class="kpi green"><div class="label">衆院議席</div><div class="value">${pp.lowerSeats}</div></div>
-<div class="kpi yellow"><div class="label">参院議席</div><div class="value">${pp.upperSeats}</div></div>
-<div class="kpi purple"><div class="label">党員</div><div class="value">${members.length+ordinary.length}</div></div>
-</div>
-</div>
+ const pledgeLabels={
+  economy:"経済",
+  taxation:"税制・財政",
+  welfare:"社会保障",
+  education:"教育",
+  childcare:"子育て",
+  diplomacy:"外交",
+  defense:"防衛",
+  energy:"エネルギー",
+  environment:"環境",
+  constitutionalReform:"憲法"
+ };
 
-<div class="col4 card">
-<h2>党執行部</h2>
-${officerRow("幹事長","secretaryGeneral",pp)}
-${officerRow("政策責任者","policy",pp)}
-${officerRow("選挙責任者","election",pp)}
-${officerRow("広報責任者","media",pp)}
-${isLeader()?'<div class="actions"><button type="button" class="primary" data-action="appointOfficers">幹事長・役員を任命</button></div>':
-'<div class="muted">党首になると任命できます。</div>'}
-</div>
+ return `
+ <div class="grid">
 
-<div class="col6 card">
-<div class="section-title"><h2>所属議員</h2><span class="muted">${members.length}人</span></div>
-<div class="list">
-${members.slice(0,40).map(id=>{
-const p=getPolitician(id);
-return p?`<div class="row clickable" data-action="person" data-id="${p.id}"><div><b>${esc(p.name)}</b><div class="muted">${p.house} / ${p.group}</div></div><span class="badge">${p.popularity}</span></div>`:"";
-}).join("")}
-</div>
-</div>
+ <div class="col8 card gradient">
+ <div class="section-title">
+ <div>
+ <h2>${esc(pp.name)}</h2>
+ <div class="muted">${esc(pp.short)} / 党支持率 ${fmt(pp.published)}%</div>
+ </div>
+ <span class="badge ${isLeader()?"purple":"cyan"}">
+ ${isLeader()?"あなたが党首":"党首："+esc(getPolitician(pp.leaderId)?.name||"未定")}
+ </span>
+ </div>
 
-<div class="col6 card">
-<div class="section-title"><h2>一般党員</h2><span class="muted">${ordinary.length}人</span></div>
-<div class="list">
-${ordinary.map(m=>`
-<div class="row clickable" data-action="member" data-id="${m.id}">
-<div><b>${esc(m.name)}</b><div class="muted">${m.role} / 知名度 ${m.recognition}</div></div>
-<span class="badge green">${m.support}%</span>
-</div>`).join("")}
-</div>
-</div>
-</div>`;
+ <div class="kpis">
+ <div class="kpi cyan">
+  <div class="label">党支持率</div>
+  <div class="value">${fmt(pp.published)}%</div>
+ </div>
+ <div class="kpi green">
+  <div class="label">衆院議席</div>
+  <div class="value">${pp.lowerSeats}</div>
+ </div>
+ <div class="kpi yellow">
+  <div class="label">参院議席</div>
+  <div class="value">${pp.upperSeats}</div>
+ </div>
+ <div class="kpi purple">
+  <div class="label">党員</div>
+  <div class="value">${members.length+ordinary.length}</div>
+ </div>
+ </div>
+ </div>
+
+ <div class="col4 card">
+ <h2>党執行部</h2>
+ ${officerRow("幹事長","secretaryGeneral",pp)}
+ ${officerRow("政策責任者","policy",pp)}
+ ${officerRow("選挙責任者","election",pp)}
+ ${officerRow("広報責任者","media",pp)}
+
+ ${isLeader()
+ ?'<div class="actions"><button type="button" class="primary" data-action="appointOfficers">幹事長・役員を任命</button></div>'
+ :'<div class="muted">党首になると任命できます。</div>'}
+ </div>
+
+ <div class="col6 card">
+ <div class="section-title">
+ <h2>所属議員</h2>
+ <span class="muted">${members.length}人</span>
+ </div>
+
+ <div class="list">
+ ${members.slice(0,40).map(id=>{
+  const p=getPolitician(id);
+  return p
+   ?`<div class="row clickable" data-action="person" data-id="${p.id}">
+     <div>
+      <b>${esc(p.name)}</b>
+      <div class="muted">${p.house} / ${p.group}</div>
+     </div>
+     <span class="badge">${p.popularity}</span>
+    </div>`
+   :"";
+ }).join("")}
+ </div>
+ </div>
+
+ <div class="col6 card">
+ <div class="section-title">
+ <h2>一般党員</h2>
+ <span class="muted">${ordinary.length}人</span>
+ </div>
+
+ <div class="list">
+ ${ordinary.map(m=>`
+ <div class="row clickable" data-action="member" data-id="${m.id}">
+  <div>
+   <b>${esc(m.name)}</b>
+   <div class="muted">${m.role} / 知名度 ${m.recognition}</div>
+  </div>
+  <span class="badge green">${m.support}%</span>
+ </div>`).join("")}
+ </div>
+ </div>
+
+ <div class="col12 card gradient">
+ <div class="section-title">
+  <div>
+   <h2>党の公約</h2>
+   <div class="muted">
+    現在の${esc(pp.name)}の政策・公約です。
+   </div>
+  </div>
+  <span class="badge cyan">政策プロフィール</span>
+ </div>
+
+ <div class="list">
+ ${Object.keys(pledgeLabels).map(key=>`
+  <div class="row" style="display:block">
+   <div class="section-title" style="margin:0 0 8px">
+    <b>${pledgeLabels[key]}</b>
+    <span class="badge ${
+      pp.pledges?.[key]>=70
+        ?"green"
+        :pp.pledges?.[key]<=30
+          ?"red"
+          :"yellow"
+    }">
+     ${typeof pp.pledges?.[key]==="number"
+       ?pp.pledges[key]+"/100"
+       :"未設定"}
+    </span>
+   </div>
+
+   <div class="bar">
+    <span style="width:${clamp(
+      Number(pp.pledges?.[key]||0),
+      0,
+      100
+    )}%"></span>
+   </div>
+
+   <div class="muted" style="margin-top:8px">
+    ${esc(pp.pledgeTexts?.[key]||"公約はまだ設定されていません。")}
+   </div>
+  </div>
+ `).join("")}
+ </div>
+ </div>
+
+ </div>`;
 }
 
 function officerRow(label,key,pp){
