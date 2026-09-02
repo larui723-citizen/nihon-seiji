@@ -1213,14 +1213,26 @@ governmentParties:(()=>{
  const coalition=[lead];
  let totalSeats=lead.seats;
 
- const partners=ranking.slice(1);
+const partners=ranking
+ .slice(1)
+ .map(partner=>({
+  ...partner,
+  coalitionScore:getCoalitionScore(
+   lead.id,
+   partner.id
+  )
+ }))
+ .filter(partner=>partner.coalitionScore>=55)
+ .sort((a,b)=>(
+  b.coalitionScore-a.coalitionScore
+ ));
 
- for(const partner of partners){
-  if(totalSeats>=majority)break;
+for(const partner of partners){
+ if(totalSeats>=majority)break;
 
-  coalition.push(partner);
-  totalSeats+=partner.seats;
- }
+ coalition.push(partner);
+ totalSeats+=partner.seats;
+}
 
  // 過半数に届かなくても少数与党として政権を成立させる
  return coalition.length
