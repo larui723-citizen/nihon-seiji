@@ -1911,15 +1911,45 @@ function updatePopulationStats(){
   const baseAgingRate=29.3;
 
   // -------------------------
+  // 合計特殊出生率（TFR）
+  // -------------------------
+  // 経済・生活環境から出生率への圧力を計算
+  let birthRatePressure=0;
+
+  // 賃金が高いほど出生率を押し上げる
+  if(typeof e.wage==="number"){
+    birthRatePressure+=(e.wage-3.0)*0.003;
+  }
+
+  // 失業率が高いほど出生率を押し下げる
+  if(typeof e.unemployment==="number"){
+    birthRatePressure-=(e.unemployment-2.5)*0.004;
+  }
+
+  // 住宅価格が高いほど出生率を押し下げる
+  if(typeof e.housingPrice==="number"){
+    birthRatePressure-=(e.housingPrice-100)*0.0005;
+  }
+
+  // 可処分所得が高いほど出生率を押し上げる
+  if(typeof e.disposableIncome==="number"){
+    birthRatePressure+=(e.disposableIncome-300)*0.0005;
+  }
+
+  // TFRは急激には変化しない
+  e.birthRate+=birthRatePressure*0.02;
+
+  // 現実的な範囲に制限
+  e.birthRate=clamp(e.birthRate,0.70,2.00);
+
+  // -------------------------
   // 出生数
   // -------------------------
-  // 人口・TFRに応じて出生数を変化させる
   const targetAnnualBirths=
     baseBirths*
     (e.population/basePopulation)*
     (e.birthRate/baseBirthRate);
 
-  // 出生数は急激には変化しない
   e.births=
     e.births*0.98+
     targetAnnualBirths*0.02;
@@ -1927,13 +1957,11 @@ function updatePopulationStats(){
   // -------------------------
   // 死亡数
   // -------------------------
-  // 人口と高齢化率に応じて死亡数を変化させる
   const targetAnnualDeaths=
     baseDeaths*
     (e.population/basePopulation)*
     (e.agingRate/baseAgingRate);
 
-  // 死亡数も徐々に変化
   e.deaths=
     e.deaths*0.98+
     targetAnnualDeaths*0.02;
@@ -1944,7 +1972,6 @@ function updatePopulationStats(){
   const annualChange=
     e.births-e.deaths+e.netMigration;
 
-  // 1か月分に換算
   const monthlyChange=
     annualChange/12/1000000;
 
@@ -1953,6 +1980,7 @@ function updatePopulationStats(){
   if(e.population<0)e.population=0;
 
   // 表示用に丸める
+  e.birthRate=Number(e.birthRate.toFixed(3));
   e.births=Math.round(e.births);
   e.deaths=Math.round(e.deaths);
   e.population=Number(e.population.toFixed(3));
