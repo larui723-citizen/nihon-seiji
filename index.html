@@ -2414,31 +2414,43 @@ showToast("自動行動完了。4行動を消化しました。");
 }
 
 function nextMonth(){
-if(actionLeft()>0){
-showToast("先に残りの行動を使ってください。自動消化もできます。");
-return;
-}
+ if(actionLeft()>0){
+  showToast("先に残りの行動を使ってください。自動消化もできます。");
+  return;
+ }
 
-state.date.month++;
-if(state.date.month>12){
-state.date.month=1;
-state.date.year++;
-}
-state.actionCount=0;
+ const scheduled=state.leadership.scheduledElection;
 
-monthlyUpdate();
+ if(
+  scheduled &&
+  !state.leadership.active &&
+  state.leadership.candidacyDecision===null &&
+  state.date.year*12+state.date.month+1===
+  scheduled.year*12+scheduled.month
+ ){
+  leadershipCandidacyDecision();
+  return;
+ }
 
-if([3,6,9,12].includes(state.date.month)){
-publishSupport();
-}
+ state.date.month++;
+ if(state.date.month>12){
+  state.date.month=1;
+  state.date.year++;
+ }
+ state.actionCount=0;
 
-if(state.auto.enabled){
-while(actionLeft()>0)spendAction(state.auto.direction);
-}
+ monthlyUpdate();
+ if([3,6,9,12].includes(state.date.month)){
+  publishSupport();
+ }
 
-saveSilently();
-render();
-showToast("翌月へ進みました。");
+ if(state.auto.enabled){
+  while(actionLeft()>0)spendAction(state.auto.direction);
+ }
+
+ saveSilently();
+ render();
+ showToast("翌月へ進みました。");
 }
 function updatePopulationStats(){
   const e=state.economy;
