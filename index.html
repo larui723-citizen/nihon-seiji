@@ -1995,21 +1995,20 @@ function updatePopulationStats(){
     -500000,
     500000
   );
-  // -------------------------
+   // -------------------------
   // 高齢化率
   // -------------------------
-  // 出生率が低いほど、高齢者の割合が徐々に上昇する
-  let agingPressure=0;
+  // 出生率・死亡数・人口構造の変化によって
+  // 高齢化率が長期的にゆっくり変化する
 
-  if(e.birthRate<1.5){
-    agingPressure+=(1.5-e.birthRate)*0.015;
-  }
+  const targetAgingRate=
+    29.3
+    +(1.20-e.birthRate)*1.2
+    +(e.deaths/1000000-1.6)*0.8;
 
-  if(e.birthRate>1.5){
-    agingPressure-=(e.birthRate-1.5)*0.008;
-  }
-
-  e.agingRate+=agingPressure;
+  e.agingRate=
+    e.agingRate*0.99+
+    targetAgingRate*0.01;
 
   e.agingRate=clamp(
     e.agingRate,
