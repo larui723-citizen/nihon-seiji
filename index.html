@@ -2554,7 +2554,136 @@ function updatePopulationStats(){
   e.workingAgePopulation=Number(
     e.workingAgePopulation.toFixed(2)
   );
-  e.population=Number(e.population.toFixed(3));
+ e.population=Number(e.population.toFixed(3));
+}
+
+function updatePartyPledgePressure(){
+ PARTIES.forEach(p=>{
+  const party=state.parties[p.id];
+  if(!party)return;
+
+  if(!party.pledgeDynamics){
+   party.pledgeDynamics={
+    pressure:0,
+    lastChanged:null,
+    lastReason:"ゲーム開始時の初期公約"
+   };
+  }
+
+  const currentSupport=Number(party.support||0);
+  const previousSupport=Number(
+   party.pledgeDynamics.previousSupport??currentSupport
+  );
+
+  const supportChange=currentSupport-previousSupport;
+
+  if(supportChange<0){
+   party.pledgeDynamics.pressure=clamp(
+    party.pledgeDynamics.pressure+Math.abs(supportChange)*2,
+    0,
+    100
+   );
+  }else if(supportChange>0){
+   party.pledgeDynamics.pressure=clamp(
+    party.pledgeDynamics.pressure-supportChange,
+    0,
+    100
+   );
+  }
+
+  party.pledgeDynamics.previousSupport=currentSupport;
+ });
+}
+function updatePartyPledgePressure(){
+ PARTIES.forEach(p=>{
+  const party=state.parties[p.id];
+  if(!party)return;
+
+  if(!party.pledgeDynamics){
+   party.pledgeDynamics={
+    pressure:0,
+    lastChanged:null,
+    lastReason:"ゲーム開始時の初期公約"
+   };
+  }
+
+  const currentSupport=Number(party.support||0);
+  const previousSupport=Number(
+   party.pledgeDynamics.previousSupport??currentSupport
+  );
+
+  const supportChange=currentSupport-previousSupport;
+
+  if(supportChange<0){
+   party.pledgeDynamics.pressure=clamp(
+    party.pledgeDynamics.pressure+Math.abs(supportChange)*2,
+    0,
+    100
+   );
+  }else if(supportChange>0){
+   party.pledgeDynamics.pressure=clamp(
+    party.pledgeDynamics.pressure-supportChange,
+    0,
+    100
+   );
+  }
+
+  party.pledgeDynamics.previousSupport=currentSupport;
+ }
+
+);
+}
+
+function evolvePartyPledges(){
+ const pledgeKeys=[
+  "economy",
+  "taxation",
+  "welfare",
+  "education",
+  "childcare",
+  "diplomacy",
+  "defense",
+  "energy",
+  "environment",
+  "constitutionalReform"
+ ];
+
+ PARTIES.forEach(p=>{
+  const party=state.parties[p.id];
+  if(!party?.pledges)return;
+
+  if(!party.pledgeDynamics){
+   party.pledgeDynamics={
+    pressure:0,
+    lastChanged:null,
+    lastReason:"ゲーム開始時の初期公約"
+   };
+  }
+
+  if(party.pledgeDynamics.pressure<50)return;
+
+  const key=pledgeKeys[
+   Math.floor(Math.random()*pledgeKeys.length)
+  ];
+
+  const oldValue=Number(party.pledges[key]??50);
+
+  const direction=Math.random()>0.5?1:-1;
+  const change=5+Math.floor(Math.random()*6);
+
+  const newValue=clamp(
+   oldValue+(direction*change),
+   0,
+   100
+  );
+
+  party.pledges[key]=newValue;
+
+  party.pledgeDynamics.pressure=0;
+  party.pledgeDynamics.lastChanged=state.date;
+  party.pledgeDynamics.lastReason=
+   "支持率低下を受け、党内で政策の見直しが行われた。";
+ });
 }
 function monthlyUpdate(){
 const e=state.economy;
