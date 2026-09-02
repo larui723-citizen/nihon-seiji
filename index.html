@@ -2754,6 +2754,23 @@ party.pledgeDynamics.lastReason=
  "支持率低下を受け、党内で政策の見直しが行われた。";
  });
 }
+function getPoliticalPressures(){
+ const e=state.economy;
+
+ return {
+  inflation:typeof e.cpi==="number" && e.cpi>=2.5,
+  recession:typeof e.gdpGrowth==="number" && e.gdpGrowth<=0,
+  unemployment:typeof e.unemployment==="number" && e.unemployment>=4.0,
+  wageGrowth:typeof e.wage==="number" && e.wage>=4.0,
+  aging:typeof e.agingRate==="number" && e.agingRate>=30,
+  birthDecline:typeof e.birthRate==="number" && e.birthRate<=1.10,
+  yenWeakness:typeof e.usdjpy==="number" && e.usdjpy>=155,
+  energyCost:typeof e.gasoline==="number" && e.gasoline>=190,
+  crime:typeof e.crime==="number" && e.crime>=115,
+  foreignSecurity:typeof e.foreignCases==="number" && e.foreignCases>=750
+ };
+}
+
 function monthlyUpdate(){
 const e=state.economy;
 e.nikkei+=rint(-900,1100);
