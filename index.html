@@ -3178,11 +3178,12 @@ if(winner==="player"){
   month:state.date.month
  };
 
- state.leadership.emergency=false;
- state.leadership.emergencyReason=null;
- state.leadership.active=false;
+state.leadership.emergency=false;
+state.leadership.emergencyReason=null;
+state.leadership.active=false;
+state.leadership.candidacyDecision=null;
 
- log("党首選に勝利し、あなたが党首になった。");
+log("党首選に勝利し、あなたが党首になった。");
  closeModal();
  render();
  showToast("党首選に勝利しました！");
@@ -3205,10 +3206,11 @@ if(winner==="player"){
  };
 
  state.leadership.emergency=false;
- state.leadership.emergencyReason=null;
- state.leadership.active=false;
+state.leadership.emergencyReason=null;
+state.leadership.active=false;
+state.leadership.candidacyDecision=null;
 
- log("党首選で"+candidateName(winner)+"が勝利した。");
+log("党首選で"+candidateName(winner)+"が勝利した。");
  closeModal();
  render();
  showToast("党首選は"+candidateName(winner)+"が勝利しました。");
