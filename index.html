@@ -1914,26 +1914,36 @@ function updatePopulationStats(){
   const baseNetMigration=180000;
   const baseWorkingAgePopulation=73.0;
 
-   // -------------------------
+    // -------------------------
   // 合計特殊出生率（TFR）
   // -------------------------
-  // 経済・雇用・住宅・所得の状況から出生率を決める
-  let birthRatePressure=0;
+  // 経済・雇用・住宅・所得から出生率の目標値を計算する
 
-  // 賃金が高いほど出生率を押し上げる
-  birthRatePressure+=(e.wage-3.0)*0.015;
+  let targetBirthRate=1.20;
 
-  // 失業率が高いほど出生率を押し下げる
-  birthRatePressure-=(e.unemployment-2.5)*0.012;
+  // 賃金
+  targetBirthRate+=(e.wage-3.0)*0.08;
 
-  // 住宅価格が高いほど出生率を押し下げる
-  birthRatePressure-=(e.housingPrice-100)*0.002;
+  // 失業率
+  targetBirthRate-=(e.unemployment-2.5)*0.06;
 
-  // 可処分所得が高いほど出生率を押し上げる
-  birthRatePressure+=(e.disposableIncome-300)*0.002;
+  // 住宅価格
+  targetBirthRate-=(e.housingPrice-100)*0.01;
 
-  // 毎月少しずつ現在の経済状況を反映
-  e.birthRate+=birthRatePressure;
+  // 可処分所得
+  targetBirthRate+=(e.disposableIncome-300)*0.01;
+
+  // 政策・経済環境による目標値の範囲
+  targetBirthRate=clamp(
+    targetBirthRate,
+    0.70,
+    2.00
+  );
+
+  // TFRは一気に変化せず、目標値へ徐々に近づく
+  e.birthRate=
+    e.birthRate*0.98+
+    targetBirthRate*0.02;
 
   e.birthRate=clamp(
     e.birthRate,
