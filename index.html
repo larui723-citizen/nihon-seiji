@@ -838,21 +838,28 @@ const politicians=buildPoliticians();
 const parties={};
 
 PARTIES.forEach(p=>{
-parties[p.id]={
-...p,
-support:0,
-published:0,
-lowerSeats:0,
-upperSeats:0,
-leaderId:null,
-members:[],
-officers:{
-secretaryGeneral:null,
-policy:null,
-election:null,
-media:null
-}
-};
+ parties[p.id]={
+  ...p,
+  support:0,
+  published:0,
+  lowerSeats:0,
+  upperSeats:0,
+  leaderId:null,
+  members:[],
+  officers:{
+   secretaryGeneral:null,
+   policy:null,
+   election:null,
+   media:null
+  },
+
+  // 公約変化の内部状態
+  pledgeDynamics:{
+   pressure:0,
+   lastChanged:null,
+   lastReason:"ゲーム開始時の初期公約"
+  }
+ };
 });
 
 parties.ldp.lowerSeats=316;
