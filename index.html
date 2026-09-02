@@ -1121,16 +1121,50 @@ partyMembers,
 governmentPartyId:(()=>{
  const majority=Math.floor(lowerTotal/2)+1;
 
- const winner=PARTIES
+ const ranking=PARTIES
   .map(p=>({
    id:p.id,
-   seats:parties[p.id].lowerSeats
+   seats:parties[p.id].lowerSeats,
+   ideology:parties[p.id].ideology
   }))
-  .sort((a,b)=>b.seats-a.seats)[0];
+  .sort((a,b)=>b.seats-a.seats);
 
- return winner && winner.seats>=majority
-  ? winner.id
-  : null;
+ if(!ranking.length)return [];
+
+ const lead=ranking[0];
+
+ // 単独過半数
+ if(lead.seats>=majority){
+  return [lead.id];
+ }
+
+ // 最大政党を中心に、政策距離の近い政党から連立候補を選ぶ
+ const coalition=[lead];
+ let totalSeats=lead.seats;
+
+ const partners=ranking
+  .slice(1)
+  .sort((a,b)=>{
+   const da=Math.abs(a.ideology-lead.ideology);
+   const db=Math.abs(b.ideology-lead.ideology);
+
+   if(da!==db)return da-db;
+   return b.seats-a.seats;
+  });
+
+ for(const partner of partners){
+  if(totalSeats>=majority)break;
+
+  coalition.push(partner);
+  totalSeats+=partner.seats;
+ }
+
+ // どうしても過半数に届かない場合でも政権を空白にしない
+ if(!coalition.length){
+  return [lead.id];
+ }
+
+ return coalition.map(x=>x.id);
 })(),
 actionCount:0,
 actionMax:4,
