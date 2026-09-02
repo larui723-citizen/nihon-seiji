@@ -1902,6 +1902,7 @@ function updatePopulationStats(){
   if(typeof e.deaths!=="number")e.deaths=1600000;
   if(typeof e.netMigration!=="number")e.netMigration=180000;
   if(typeof e.agingRate!=="number")e.agingRate=29.3;
+  if(typeof e.workingAgePopulation!=="number")e.workingAgePopulation=73.0;
 
   // 基準値
   const basePopulation=123.5;
@@ -1910,6 +1911,7 @@ function updatePopulationStats(){
   const baseDeaths=1600000;
   const baseAgingRate=29.3;
   const baseNetMigration=180000;
+  const baseWorkingAgePopulation=73.0;
 
   // -------------------------
   // 合計特殊出生率（TFR）
@@ -1964,27 +1966,22 @@ function updatePopulationStats(){
   // -------------------------
   let migrationPressure=0;
 
-  // 賃金が高いほど流入しやすい
   if(typeof e.wage==="number"){
     migrationPressure+=(e.wage-3.0)*0.08;
   }
 
-  // 失業率が高いほど流入しにくい
   if(typeof e.unemployment==="number"){
     migrationPressure-=(e.unemployment-2.5)*0.10;
   }
 
-  // GDP成長率が高いほど流入しやすい
   if(typeof e.gdpGrowth==="number"){
     migrationPressure+=(e.gdpGrowth-1.2)*0.05;
   }
 
-  // 円安が進みすぎると海外から見た日本の所得価値が下がる
   if(typeof e.usdjpy==="number"){
     migrationPressure-=(e.usdjpy-148)*0.003;
   }
 
-  // 基準値から徐々に変化
   const targetNetMigration=
     baseNetMigration*(1+migrationPressure);
 
@@ -1992,11 +1989,32 @@ function updatePopulationStats(){
     e.netMigration*0.98+
     targetNetMigration*0.02;
 
-  // 極端な値にならないようにする
   e.netMigration=clamp(
     e.netMigration,
     -500000,
     500000
+  );
+
+  // -------------------------
+  // 生産年齢人口
+  // -------------------------
+  // 総人口と高齢化率から生産年齢人口の目標値を計算
+  const targetWorkingAgeShare=
+    (100-e.agingRate-11.6)/100;
+
+  const targetWorkingAgePopulation=
+    e.population*targetWorkingAgeShare;
+
+  // 人口構造は急激には変化しない
+  e.workingAgePopulation=
+    e.workingAgePopulation*0.995+
+    targetWorkingAgePopulation*0.005;
+
+  // 基準値から大きく外れないようにする
+  e.workingAgePopulation=clamp(
+    e.workingAgePopulation,
+    0,
+    e.population
   );
 
   // -------------------------
@@ -2017,6 +2035,9 @@ function updatePopulationStats(){
   e.births=Math.round(e.births);
   e.deaths=Math.round(e.deaths);
   e.netMigration=Math.round(e.netMigration);
+  e.workingAgePopulation=Number(
+    e.workingAgePopulation.toFixed(2)
+  );
   e.population=Number(e.population.toFixed(3));
 }
 function monthlyUpdate(){
