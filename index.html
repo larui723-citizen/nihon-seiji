@@ -2989,11 +2989,6 @@ localStorage.setItem(STORAGE_KEY,JSON.stringify(state));
 ========================================================= */
 
 function leadershipPrepare(){
- if(isLeader()){
-  showToast("すでに党首です。");
-  return;
- }
-
  const pp=getPlayerParty();
  if(!pp)return;
 
