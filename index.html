@@ -2722,9 +2722,12 @@ addNews("politics","各党の政策調整が活発化","ゲーム内シナリオ
 maybeAgePoliticians();
 maybeForeignMeeting();
 maybeEconomicEvent();
-    updatePopulationStats();
-  updateGDPStats();
+updatePopulationStats();
+updateGDPStats();
 recordEconomyHistory();
+
+updatePartyPledgePressure();
+evolvePartyPledges();
 }
 
 function publishSupport(){
