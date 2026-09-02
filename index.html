@@ -1478,9 +1478,19 @@ const h=canvas.height;
     }
   });
 
+  const previous=values[0];
+const current=values[values.length-1];
+
+if(current>previous){
   ctx.strokeStyle="#36d58a";
-  ctx.lineWidth=3;
-  ctx.stroke();
+}else if(current<previous){
+  ctx.strokeStyle="#ff4d4d";
+}else{
+  ctx.strokeStyle="#111111";
+}
+
+ctx.lineWidth=3;
+ctx.stroke();
 
   // GDPの数値
   ctx.fillStyle="#eef5ff";
