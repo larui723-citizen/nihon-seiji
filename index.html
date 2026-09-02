@@ -1625,9 +1625,12 @@ function renderParty(){
   <div class="value">${pp.upperSeats}</div>
  </div>
  <div class="kpi purple">
-  <div class="label">党員</div>
-  <div class="value">${members.length+ordinary.length}</div>
- </div>
+ <div class="label">所属議員</div>
+ <div class="value">${members.filter(id=>{
+  const p=getPolitician(id);
+  return p?.incumbent;
+ }).length}</div>
+</div>
  </div>
  </div>
 
@@ -1645,9 +1648,30 @@ function renderParty(){
 
  <div class="col6 card">
  <div class="section-title">
- <h2>所属議員</h2>
- <span class="muted">${members.length}人</span>
+  <h2>所属議員</h2>
+  <span class="muted">${members.filter(id=>{
+   const p=getPolitician(id);
+   return p?.incumbent;
+  }).length}人</span>
  </div>
+ <div class="list">
+ ${members.filter(id=>{
+  const p=getPolitician(id);
+  return p?.incumbent;
+ }).slice(0,40).map(id=>{
+  const p=getPolitician(id);
+  return p
+   ?`<div class="row clickable" data-action="person" data-id="${p.id}">
+     <div>
+      <b>${esc(p.name)}</b>
+      <div class="muted">${p.house} / ${p.group}</div>
+     </div>
+     <span class="badge">${p.popularity}</span>
+    </div>`
+   :"";
+ }).join("")}
+ </div>
+</div>
 
  <div class="list">
  ${members.slice(0,40).map(id=>{
