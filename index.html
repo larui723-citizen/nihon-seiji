@@ -1478,19 +1478,27 @@ const h=canvas.height;
     }
   });
 
-  const previous=values[0];
-const current=values[values.length-1];
+ for(let i=1;i<values.length;i++){
+  const x1=pad+((i-1)/(values.length-1))*(w-pad-20);
+  const y1=h-pad-((values[i-1]-min)/range)*(h-pad-40);
 
-if(current>previous){
-  ctx.strokeStyle="#36d58a";
-}else if(current<previous){
-  ctx.strokeStyle="#ff4d4d";
-}else{
-  ctx.strokeStyle="#111111";
+  const x2=pad+(i/(values.length-1))*(w-pad-20);
+  const y2=h-pad-((values[i]-min)/range)*(h-pad-40);
+
+  if(values[i]>values[i-1]){
+    ctx.strokeStyle="#36d58a";
+  }else if(values[i]<values[i-1]){
+    ctx.strokeStyle="#ff4d4d";
+  }else{
+    ctx.strokeStyle="#111111";
+  }
+
+  ctx.lineWidth=3;
+  ctx.beginPath();
+  ctx.moveTo(x1,y1);
+  ctx.lineTo(x2,y2);
+  ctx.stroke();
 }
-
-ctx.lineWidth=3;
-ctx.stroke();
 
   // GDPの数値
   ctx.fillStyle="#eef5ff";
