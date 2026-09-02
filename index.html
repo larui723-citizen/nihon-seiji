@@ -1366,13 +1366,9 @@ ${data.map((x,i)=>`
 </div>`).join("")}
 <div class="col12 card">
 <h3>経済イベント</h3>
-<div class="actions">
-<button type="button" data-action="economicEvent" data-kind="rice">コメ不作</button>
-<button type="button" data-action="economicEvent" data-kind="oil">原油ショック</button>
-<button type="button" data-action="economicEvent" data-kind="disaster">自然災害</button>
-<button type="button" data-action="economicEvent" data-kind="cyber">サイバー攻撃</button>
-<button type="button" data-action="economicEvent" data-kind="scandal">企業不祥事</button>
-<button type="button" data-action="economicEvent" data-kind="growth">景気回復</button>
+<div class="muted">
+経済イベントは、景気・物価・為替・国際情勢などの状況に応じて自動的に発生します。
+重大な事件ほど発生確率は低く設定されています。
 </div>
 </div>
 </div>`;
@@ -1586,6 +1582,7 @@ addNews("politics","各党の政策調整が活発化","ゲーム内シナリオ
 
 maybeAgePoliticians();
 maybeForeignMeeting();
+maybeEconomicEvent();
 }
 
 function publishSupport(){
@@ -2208,41 +2205,572 @@ state.news=state.news.slice(0,30);
 経済イベント
 ========================================================= */
 
-function economicEvent(kind){
-const e=state.economy;
-if(kind==="rice"){
-e.rice+=rint(300,700);
-e.cpi+=.3;
-addNews("economic","コメ不作","ゲーム内シナリオ。天候不順によりコメの供給が減少した。");
-}
-if(kind==="oil"){
-e.gasoline+=rint(15,30);
-e.cpi+=.4;
-e.usdjpy+=rint(3,8);
-addNews("economic","原油ショック","ゲーム内シナリオ。国際的な供給不安でエネルギー価格が上昇した。");
-}
-if(kind==="disaster"){
-e.nikkei-=rint(500,1500);
-e.cpi+=.2;
-addNews("economic","大規模自然災害","ゲーム内シナリオ。インフラと物流に大きな影響が出た。");
-}
-if(kind==="cyber"){
-e.nikkei-=rint(300,900);
-e.crime+=4;
-addNews("economic","大規模サイバー攻撃","ゲーム内シナリオ。複数の重要サービスで障害が発生した。");
-}
-if(kind==="scandal"){
-e.nikkei-=rint(200,700);
-addNews("economic","企業不祥事","ゲーム内シナリオ。大手企業の不正が発覚した。");
-}
-if(kind==="growth"){
-e.nikkei+=rint(500,1800);
-e.wage+=.5;
-e.unemployment-=.2;
-addNews("economic","景気回復","ゲーム内シナリオ。設備投資と消費が改善した。");
-}
-log("経済イベント「"+kind+"」が発生した。");
-render();
+function maybeEconomicEvent(){
+  const e=state.economy;
+
+  if(!state.eventState){
+    state.eventState={
+      cooldown:0,
+      history:[],
+      lastEvent:null
+    };
+  }
+
+  if(state.eventState.cooldown>0){
+    state.eventState.cooldown--;
+    return;
+  }
+
+  const events=[
+    // =========================
+    // 食料・物価
+    // =========================
+    {
+      name:"コメ不作",
+      chance:.06,
+      run(){
+        e.rice+=rint(300,700);
+        e.cpi+=.3;
+        addNews("economic","コメ不作","天候不順などによりコメの供給が減少し、価格が上昇した。");
+      }
+    },
+    {
+      name:"食品価格上昇",
+      chance:.05,
+      run(){
+        e.rice+=rint(100,300);
+        e.seafood+=rand(3,8);
+        e.cpi+=.2;
+        addNews("economic","食品価格上昇","食品価格の上昇が家計を圧迫している。");
+      }
+    },
+    {
+      name:"食料価格安定",
+      chance:.035,
+      run(){
+        e.rice-=rint(100,250);
+        e.cpi-=.1;
+        addNews("economic","食料価格が安定","食料供給の改善により、一部の食品価格が落ち着いた。");
+      }
+    },
+    {
+      name:"インフレ加速",
+      chance:.045,
+      run(){
+        e.cpi+=rand(.3,.7);
+        e.wage+=rand(.1,.3);
+        addNews("economic","インフレ加速","幅広い商品の価格上昇が続き、物価上昇率が高まった。");
+      }
+    },
+    {
+      name:"物価安定",
+      chance:.04,
+      run(){
+        e.cpi-=rand(.2,.5);
+        addNews("economic","物価上昇が鈍化","供給環境の改善などにより、物価上昇の勢いが弱まった。");
+      }
+    },
+
+    // =========================
+    // エネルギー
+    // =========================
+    {
+      name:"原油価格上昇",
+      chance:.05,
+      run(){
+        e.gasoline+=rint(10,25);
+        e.cpi+=.25;
+        e.usdjpy+=rint(2,6);
+        addNews("economic","原油価格上昇","国際的な原油価格の上昇を受け、国内の燃料価格が上昇した。");
+      }
+    },
+    {
+      name:"原油価格下落",
+      chance:.035,
+      run(){
+        e.gasoline-=rint(8,20);
+        e.cpi-=.1;
+        addNews("economic","原油価格下落","国際的なエネルギー価格が低下し、燃料価格が落ち着いた。");
+      }
+    },
+    {
+      name:"エネルギー危機",
+      chance:.018,
+      run(){
+        e.gasoline+=rint(20,40);
+        e.cpi+=.5;
+        e.usdjpy+=rint(4,10);
+        e.nikkei-=rint(500,1300);
+        addNews("economic","エネルギー危機","国際的な供給不安によりエネルギー価格が急上昇した。");
+      }
+    },
+
+    // =========================
+    // 為替・金融政策
+    // =========================
+    {
+      name:"円安進行",
+      chance:.05,
+      run(){
+        e.usdjpy+=rint(5,12);
+        e.cpi+=.2;
+        addNews("economic","円安が進行","円安が進み、輸入品を中心に価格上昇圧力が強まった。");
+      }
+    },
+    {
+      name:"円高進行",
+      chance:.045,
+      run(){
+        e.usdjpy-=rint(5,12);
+        e.cpi-=.15;
+        addNews("economic","円高が進行","円高が進み、輸入コストが低下した。");
+      }
+    },
+    {
+      name:"為替介入",
+      chance:.012,
+      run(){
+        e.usdjpy-=rint(4,10);
+        addNews("economic","為替市場への介入","急激な為替変動を抑えるため、政府・中央銀行が市場への対応を行った。");
+      }
+    },
+    {
+      name:"追加利上げ",
+      chance:.025,
+      run(){
+        e.rate+=rand(.1,.25);
+        e.nikkei-=rint(300,800);
+        e.cpi-=.15;
+        addNews("economic","追加利上げ","物価上昇を抑えるため、金融引き締めが行われた。");
+      }
+    },
+    {
+      name:"金融緩和",
+      chance:.025,
+      run(){
+        e.rate-=rand(.1,.2);
+        e.nikkei+=rint(300,900);
+        addNews("economic","金融緩和","景気を支えるため、金融環境が緩和された。");
+      }
+    },
+
+    // =========================
+    // 雇用・賃金
+    // =========================
+    {
+      name:"雇用悪化",
+      chance:.04,
+      run(){
+        e.unemployment+=rand(.2,.5);
+        e.wage-=rand(.1,.3);
+        addNews("economic","雇用情勢が悪化","企業活動の減速により、雇用環境が悪化した。");
+      }
+    },
+    {
+      name:"雇用改善",
+      chance:.04,
+      run(){
+        e.unemployment-=rand(.2,.4);
+        e.wage+=rand(.1,.3);
+        addNews("economic","雇用情勢が改善","企業の採用意欲が高まり、雇用環境が改善した。");
+      }
+    },
+    {
+      name:"賃上げラッシュ",
+      chance:.025,
+      run(){
+        e.wage+=rand(.4,.8);
+        e.cpi+=.15;
+        addNews("economic","賃上げの動きが拡大","多くの企業で賃上げが行われ、賃金上昇率が高まった。");
+      }
+    },
+    {
+      name:"人手不足",
+      chance:.025,
+      run(){
+        e.unemployment-=.15;
+        e.wage+=rand(.3,.6);
+        addNews("economic","深刻な人手不足","労働力不足を背景に、企業の賃金引き上げが進んだ。");
+      }
+    },
+
+    // =========================
+    // 株式市場
+    // =========================
+    {
+      name:"株価急落",
+      chance:.035,
+      run(){
+        e.nikkei-=rint(1000,2500);
+        addNews("economic","株式市場が急落","投資家の警戒感が高まり、株式市場で大幅な下落が起きた。");
+      }
+    },
+    {
+      name:"株価上昇",
+      chance:.05,
+      run(){
+        e.nikkei+=rint(800,2200);
+        addNews("economic","株式市場が上昇","企業業績への期待が高まり、株式市場が上昇した。");
+      }
+    },
+    {
+      name:"投資家心理悪化",
+      chance:.025,
+      run(){
+        e.nikkei-=rint(500,1200);
+        addNews("economic","投資家心理が悪化","国内外の先行き不透明感から投資家心理が悪化した。");
+      }
+    },
+
+    // =========================
+    // 企業
+    // =========================
+    {
+      name:"企業不祥事",
+      chance:.035,
+      run(){
+        e.nikkei-=rint(300,900);
+        addNews("economic","大手企業の不祥事","大手企業の不正が発覚し、企業統治への懸念が広がった。");
+      }
+    },
+    {
+      name:"設備投資拡大",
+      chance:.035,
+      run(){
+        e.nikkei+=rint(500,1300);
+        e.unemployment-=.1;
+        e.wage+=.15;
+        addNews("economic","企業の設備投資が拡大","企業の設備投資が活発化し、経済活動を押し上げた。");
+      }
+    },
+    {
+      name:"企業業績悪化",
+      chance:.03,
+      run(){
+        e.nikkei-=rint(400,1000);
+        e.unemployment+=.15;
+        addNews("economic","企業業績が悪化","企業収益の悪化が広がり、景気への懸念が強まった。");
+      }
+    },
+
+    // =========================
+    // 半導体・産業
+    // =========================
+    {
+      name:"半導体需要急増",
+      chance:.025,
+      run(){
+        e.nikkei+=rint(700,1800);
+        e.unemployment-=.1;
+        e.wage+=.2;
+        addNews("economic","半導体需要が急増","世界的な半導体需要の拡大により、日本の関連産業が活況となった。");
+      }
+    },
+    {
+      name:"半導体工場停止",
+      chance:.012,
+      run(){
+        e.nikkei-=rint(600,1500);
+        e.unemployment+=.15;
+        addNews("economic","半導体工場が停止","部品不足などにより、半導体関連工場の操業に影響が出た。");
+      }
+    },
+    {
+      name:"製造業回復",
+      chance:.03,
+      run(){
+        e.nikkei+=rint(400,1000);
+        e.unemployment-=.15;
+        addNews("economic","製造業が回復","国内製造業の生産活動が持ち直した。");
+      }
+    },
+
+    // =========================
+    // 貿易・輸出
+    // =========================
+    {
+      name:"輸出拡大",
+      chance:.035,
+      run(){
+        e.nikkei+=rint(400,1100);
+        e.unemployment-=.1;
+        addNews("economic","輸出が拡大","海外需要の増加を受け、日本企業の輸出が伸びた。");
+      }
+    },
+    {
+      name:"輸出減少",
+      chance:.03,
+      run(){
+        e.nikkei-=rint(400,1000);
+        e.unemployment+=.1;
+        addNews("economic","輸出が減少","海外経済の減速などにより、日本の輸出が落ち込んだ。");
+      }
+    },
+    {
+      name:"貿易摩擦",
+      chance:.015,
+      run(){
+        e.nikkei-=rint(500,1200);
+        e.usdjpy+=rint(2,5);
+        addNews("economic","貿易摩擦が激化","主要国との貿易摩擦が激しくなり、企業活動に不透明感が広がった。");
+      }
+    },
+
+    // =========================
+    // 地域経済
+    // =========================
+    {
+      name:"地方経済活性化",
+      chance:.03,
+      run(){
+        e.unemployment-=.1;
+        e.wage+=.15;
+        addNews("economic","地方経済が活性化","地方で観光や設備投資が伸び、地域経済が活性化した。");
+      }
+    },
+    {
+      name:"地方企業の倒産増加",
+      chance:.02,
+      run(){
+        e.unemployment+=.2;
+        e.nikkei-=rint(200,600);
+        addNews("economic","地方企業の倒産が増加","地方を中心に企業倒産が増え、雇用への懸念が高まった。");
+      }
+    },
+
+    // =========================
+    // 金融危機・景気
+    // =========================
+    {
+      name:"景気後退",
+      chance:.025,
+      run(){
+        e.nikkei-=rint(700,1600);
+        e.unemployment+=rand(.2,.5);
+        e.wage-=.2;
+        addNews("economic","景気後退","企業活動と消費が弱まり、景気後退への懸念が強まった。");
+      }
+    },
+    {
+      name:"景気回復",
+      chance:.04,
+      run(){
+        e.nikkei+=rint(700,1700);
+        e.unemployment-=rand(.2,.4);
+        e.wage+=.3;
+        addNews("economic","景気回復","消費と設備投資が改善し、景気が持ち直した。");
+      }
+    },
+    {
+      name:"金融機関の経営不安",
+      chance:.012,
+      run(){
+        e.nikkei-=rint(800,1800);
+        e.unemployment+=.2;
+        addNews("economic","金融機関の経営不安","一部金融機関の経営への懸念が広がり、市場が不安定になった。");
+      }
+    },
+
+    // =========================
+    // 災害・インフラ
+    // =========================
+    {
+      name:"大規模地震",
+      chance:.012,
+      run(){
+        e.nikkei-=rint(800,2200);
+        e.cpi+=.3;
+        e.unemployment+=.2;
+        addNews("economic","大規模地震","大規模な地震により、インフラや物流に大きな影響が出た。");
+      }
+    },
+    {
+      name:"大規模水害",
+      chance:.015,
+      run(){
+        e.nikkei-=rint(500,1400);
+        e.cpi+=.2;
+        addNews("economic","大規模水害","大雨による水害で物流や地域経済に影響が出た。");
+      }
+    },
+    {
+      name:"電力供給不安",
+      chance:.018,
+      run(){
+        e.nikkei-=rint(300,900);
+        e.gasoline+=rint(3,10);
+        e.cpi+=.15;
+        addNews("economic","電力供給に不安","電力供給への懸念が高まり、企業活動に影響が出た。");
+      }
+    },
+    {
+      name:"大規模サイバー攻撃",
+      chance:.015,
+      run(){
+        e.nikkei-=rint(400,1100);
+        e.crime+=4;
+        addNews("economic","大規模サイバー攻撃","重要インフラや企業のシステムが攻撃を受け、一部サービスに障害が発生した。");
+      }
+    },
+
+    // =========================
+    // 社会・財政
+    // =========================
+    {
+      name:"社会保障費増加",
+      chance:.025,
+      run(){
+        e.cpi+=.1;
+        addNews("economic","社会保障費が増加","社会保障関連支出の増加が財政上の課題となった。");
+      }
+    },
+    {
+      name:"税収増加",
+      chance:.025,
+      run(){
+        e.nikkei+=rint(200,600);
+        addNews("economic","税収が増加","企業収益や所得の改善を背景に税収が増加した。");
+      }
+    },
+    {
+      name:"財政への懸念",
+      chance:.02,
+      run(){
+        e.nikkei-=rint(300,800);
+        addNews("economic","財政への懸念","財政状況への懸念が強まり、市場に警戒感が広がった。");
+      }
+    },
+
+    // =========================
+    // 世界経済
+    // =========================
+    {
+      name:"世界景気減速",
+      chance:.025,
+      run(){
+        e.nikkei-=rint(700,1600);
+        e.usdjpy+=rint(3,7);
+        e.unemployment+=.2;
+        addNews("economic","世界景気が減速","世界経済の減速を受け、日本企業にも影響が広がった。");
+      }
+    },
+    {
+      name:"世界景気回復",
+      chance:.035,
+      run(){
+        e.nikkei+=rint(700,1800);
+        e.unemployment-=.2;
+        addNews("economic","世界景気が回復","世界的な景気回復により、日本の輸出企業などに追い風が吹いた。");
+      }
+    },
+
+    // =========================
+    // 超大型・非常に低確率
+    // =========================
+    {
+      name:"世界金融危機",
+      chance:.0008,
+      rare:true,
+      cooldown:6,
+      run(){
+        e.nikkei-=rint(5000,10000);
+        e.unemployment+=rand(.8,1.5);
+        e.cpi-=.3;
+        e.usdjpy+=rint(10,25);
+        addNews("economic","世界金融危機","世界的な金融市場の混乱が発生し、日本経済にも深刻な影響が及んだ。");
+      }
+    },
+    {
+      name:"世界的食料危機",
+      chance:.0007,
+      rare:true,
+      cooldown:5,
+      run(){
+        e.rice+=rint(700,1500);
+        e.seafood+=rand(10,25);
+        e.cpi+=.8;
+        addNews("economic","世界的な食料危機","世界的な供給不足により、食料価格が急騰した。");
+      }
+    },
+    {
+      name:"世界的な感染症流行",
+      chance:.0018,
+      rare:true,
+      cooldown:4,
+      run(){
+        e.nikkei-=rint(2500,6000);
+        e.unemployment+=rand(.5,1.2);
+        e.cpi-=.2;
+        addNews("economic","世界的な感染症流行","世界的な感染症の拡大により、人やモノの移動が大きく制限された。");
+      }
+    },
+    {
+      name:"主要航路の大規模混乱",
+      chance:.0006,
+      rare:true,
+      cooldown:4,
+      run(){
+        e.gasoline+=rint(20,45);
+        e.cpi+=.5;
+        e.nikkei-=rint(1500,3500);
+        addNews("economic","主要航路が大混乱","国際物流の大規模な混乱により、エネルギーや部品の供給に影響が出た。");
+      }
+    },
+    {
+      name:"大規模な国際紛争",
+      chance:.0012,
+      rare:true,
+      cooldown:8,
+      run(){
+        e.nikkei-=rint(3000,7000);
+        e.gasoline+=rint(20,50);
+        e.cpi+=.7;
+        e.usdjpy+=rint(8,20);
+        addNews("economic","大規模な国際紛争が発生","世界各地で大規模な国際紛争が発生し、エネルギー価格や金融市場に大きな影響が出た。");
+      }
+    },
+    {
+      name:"日本周辺で重大な軍事危機",
+      chance:.00025,
+      rare:true,
+      cooldown:12,
+      run(){
+        e.nikkei-=rint(4000,9000);
+        e.gasoline+=rint(25,60);
+        e.cpi+=1;
+        e.usdjpy+=rint(10,25);
+        addNews("economic","日本周辺で重大な軍事危機","日本周辺の安全保障環境が急激に悪化し、経済・金融市場に強い動揺が広がった。");
+      }
+    }
+  ];
+
+  const candidates=events.filter(x=>{
+    if(Math.random()>=x.chance)return false;
+
+    // 同じイベントの連続発生を防ぐ
+    if(state.eventState.lastEvent===x.name)return false;
+
+    return true;
+  });
+
+  if(candidates.length===0)return;
+
+  // 複数同時に当選した場合は、重大イベントを優先
+  candidates.sort((a,b)=>(b.rare?1:0)-(a.rare?1:0));
+
+  const event=candidates[0];
+
+  event.run();
+
+  state.eventState.lastEvent=event.name;
+  state.eventState.history.unshift(event.name);
+  state.eventState.history=state.eventState.history.slice(0,20);
+
+  if(event.cooldown){
+    state.eventState.cooldown=event.cooldown;
+  }
+
+  log("経済イベント「"+event.name+"」が発生した。");
 }
 
 /* =========================================================
@@ -2559,7 +3087,6 @@ if(a==="newsDetail"){openNews(b.dataset.id);return}
 if(a==="meetPerson"){meetPerson(b.dataset.id);return}
 if(a==="introduce"){introduce(b.dataset.id);return}
 
-if(a==="economicEvent"){economicEvent(b.dataset.kind);return}
 
 if(a==="openTalk"){openTalk(b.dataset.party);return}
 if(a==="talkResponse"){talkResponse(b.dataset.party,b.dataset.response);return}
