@@ -1406,6 +1406,13 @@ return `
 <div class="row"><span>実行力</span><b>${state.player.execution}</b></div>
 <div class="row"><span>野心</span><b>${state.player.ambition}</b></div>
 <div class="actions">
+${state.leadership?.scheduledElection
+ ? `<div class="muted">
+     次回党首選：${state.leadership.scheduledElection.year}年${state.leadership.scheduledElection.month}月
+    </div>`
+ : '<div class="muted">次回党首選の日程は未定です。</div>'
+}
+
 ${isLeader()
  ? '<button type="button" class="green-btn" data-action="tab" data-tab="party">党運営へ</button>'
  : (
@@ -1413,9 +1420,15 @@ ${isLeader()
     ? '<button type="button" class="primary" data-action="leadershipPrepare">臨時党首選を準備</button>'
     : (
       state.leadership?.scheduledElection &&
-      state.date >= state.leadership.scheduledElection
+      (
+       state.date.year>state.leadership.scheduledElection.year ||
+       (
+        state.date.year===state.leadership.scheduledElection.year &&
+        state.date.month>=state.leadership.scheduledElection.month
+       )
+      )
        ? '<button type="button" class="primary" data-action="leadershipPrepare">党首選を準備</button>'
-       : '<div class="muted">次回党首選は任期満了時に開催されます。</div>'
+       : ''
     )
   )
 }
