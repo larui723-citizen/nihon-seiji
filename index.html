@@ -2440,6 +2440,17 @@ function nextMonth(){
  state.actionCount=0;
 
  monthlyUpdate();
+
+ if(
+  scheduled &&
+  !state.leadership.active &&
+  state.date.year*12+state.date.month===
+  scheduled.year*12+scheduled.month
+ ){
+  leadershipPrepare();
+  return;
+ }
+
  if([3,6,9,12].includes(state.date.month)){
   publishSupport();
  }
