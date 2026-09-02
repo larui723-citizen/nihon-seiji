@@ -3185,17 +3185,12 @@ function leadershipMonthlyCheck(){
  }
 
  const scheduled=state.leadership.scheduledElection;
+ if(!scheduled)return;
 
- if(
-  scheduled &&
-  (
-   state.date.year>scheduled.year ||
-   (
-    state.date.year===scheduled.year &&
-    state.date.month>=scheduled.month
-   )
-  )
- ){
+ const currentKey=state.date.year*12+state.date.month;
+ const scheduledKey=scheduled.year*12+scheduled.month;
+
+ if(currentKey>=scheduledKey){
   leadershipPrepare();
  }
 }
