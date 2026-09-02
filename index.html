@@ -2691,18 +2691,7 @@ function generatePledgeText(key,value,baseText){
 }
 
 function evolvePartyPledges(){
- const pledgeKeys=[
-  "economy",
-  "taxation",
-  "welfare",
-  "education",
-  "childcare",
-  "diplomacy",
-  "defense",
-  "energy",
-  "environment",
-  "constitutionalReform"
- ];
+ const domainPressures=getPolicyDomainPressures();
 
  PARTIES.forEach(p=>{
   const party=state.parties[p.id];
@@ -2712,19 +2701,48 @@ function evolvePartyPledges(){
    party.pledgeDynamics={
     pressure:0,
     lastChanged:null,
-    lastReason:"ゲーム開始時の初期公約"
+    lastReason:"ゲーム開始時の初期公約",
+    history:[]
    };
+  }
+
+  if(!party.pledgeDynamics.history){
+   party.pledgeDynamics.history=[];
   }
 
   if(party.pledgeDynamics.pressure<50)return;
 
-  const key=pledgeKeys[
-   Math.floor(Math.random()*pledgeKeys.length)
+  const candidates=Object.entries(domainPressures)
+   .filter(([key,pressure])=>{
+    return pressure>0 && party.pledges[key]!==undefined;
+   });
+
+  if(!candidates.length)return;
+
+  candidates.sort((a,b)=>b[1]-a[1]);
+
+  const maxPressure=candidates[0][1];
+
+  const topCandidates=candidates.filter(
+   ([key,pressure])=>pressure===maxPressure
+  );
+
+  const [key]=topCandidates[
+   Math.floor(Math.random()*topCandidates.length)
   ];
 
   const oldValue=Number(party.pledges[key]??50);
 
-  const direction=Math.random()>0.5?1:-1;
+  let direction=1;
+
+  if(oldValue>=75){
+   direction=-1;
+  }else if(oldValue<=25){
+   direction=1;
+  }else{
+   direction=Math.random()>0.5?1:-1;
+  }
+
   const change=5+Math.floor(Math.random()*6);
 
   const newValue=clamp(
@@ -2733,25 +2751,28 @@ function evolvePartyPledges(){
    100
   );
 
- party.pledges[key]=newValue;
-party.pledgeTexts[key]=generatePledgeText(
- key,
- newValue,
- party.pledgeTexts?.[key]||""
-);
+  if(newValue===oldValue)return;
 
-party.pledgeDynamics.history.push({
- date:state.date,
- policy:key,
- oldValue:oldValue,
- newValue:newValue,
- reason:"支持率低下を受け、党内で政策の見直しが行われた。"
-});
+  party.pledges[key]=newValue;
 
-party.pledgeDynamics.pressure=0;
-party.pledgeDynamics.lastChanged=state.date;
-party.pledgeDynamics.lastReason=
- "支持率低下を受け、党内で政策の見直しが行われた。";
+  party.pledgeTexts[key]=generatePledgeText(
+   key,
+   newValue,
+   party.pledgeTexts?.[key]||""
+  );
+
+  party.pledgeDynamics.history.push({
+   date:state.date,
+   policy:key,
+   oldValue:oldValue,
+   newValue:newValue,
+   reason:"社会・経済状況の変化と支持率低下を受け、党内で政策の見直しが行われた。"
+  });
+
+  party.pledgeDynamics.pressure=0;
+  party.pledgeDynamics.lastChanged=state.date;
+  party.pledgeDynamics.lastReason=
+   "社会・経済状況の変化と支持率低下を受け、党内で政策の見直しが行われた。";
  });
 }
 function getPoliticalPressures(){
