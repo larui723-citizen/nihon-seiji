@@ -3064,9 +3064,19 @@ showToast("党首選は"+candidateName(winner)+"が勝利しました。");
 }
 
 function leadershipMonthlyCheck(){
-if(Math.random()<.05){
-leadershipPrepare();
-}
+ if(state.leadership.active)return;
+
+ if(state.leadership.emergency){
+  leadershipPrepare();
+  return;
+ }
+
+ if(
+  state.leadership.scheduledElection &&
+  state.date >= state.leadership.scheduledElection
+ ){
+  leadershipPrepare();
+ }
 }
 
 /* =========================================================
