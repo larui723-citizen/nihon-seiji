@@ -3431,7 +3431,11 @@ state.tab=b.dataset.tab;
 render();
 return;
 }
-
+if(a==="economyTab"){
+state.economyTab=b.dataset.tab;
+render();
+return;
+}
 if(a==="chooseStartParty"){
 document.querySelectorAll(".party-option").forEach(x=>x.classList.remove("selected"));
 b.classList.add("selected");
