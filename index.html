@@ -2678,12 +2678,20 @@ function evolvePartyPledges(){
    100
   );
 
-  party.pledges[key]=newValue;
+ party.pledges[key]=newValue;
 
-  party.pledgeDynamics.pressure=0;
-  party.pledgeDynamics.lastChanged=state.date;
-  party.pledgeDynamics.lastReason=
-   "支持率低下を受け、党内で政策の見直しが行われた。";
+party.pledgeDynamics.history.push({
+ date:state.date,
+ policy:key,
+ oldValue:oldValue,
+ newValue:newValue,
+ reason:"支持率低下を受け、党内で政策の見直しが行われた。"
+});
+
+party.pledgeDynamics.pressure=0;
+party.pledgeDynamics.lastChanged=state.date;
+party.pledgeDynamics.lastReason=
+ "支持率低下を受け、党内で政策の見直しが行われた。";
  });
 }
 function monthlyUpdate(){
