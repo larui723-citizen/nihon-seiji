@@ -1914,30 +1914,32 @@ function updatePopulationStats(){
   const baseNetMigration=180000;
   const baseWorkingAgePopulation=73.0;
 
-  // -------------------------
+   // -------------------------
   // 合計特殊出生率（TFR）
   // -------------------------
+  // 経済・雇用・住宅・所得の状況から出生率を決める
   let birthRatePressure=0;
 
-  if(typeof e.wage==="number"){
-    birthRatePressure+=(e.wage-3.0)*0.003;
-  }
+  // 賃金が高いほど出生率を押し上げる
+  birthRatePressure+=(e.wage-3.0)*0.015;
 
-  if(typeof e.unemployment==="number"){
-    birthRatePressure-=(e.unemployment-2.5)*0.004;
-  }
+  // 失業率が高いほど出生率を押し下げる
+  birthRatePressure-=(e.unemployment-2.5)*0.012;
 
-  if(typeof e.housingPrice==="number"){
-    birthRatePressure-=(e.housingPrice-100)*0.0005;
-  }
+  // 住宅価格が高いほど出生率を押し下げる
+  birthRatePressure-=(e.housingPrice-100)*0.002;
 
-  if(typeof e.disposableIncome==="number"){
-    birthRatePressure+=(e.disposableIncome-300)*0.0005;
-  }
+  // 可処分所得が高いほど出生率を押し上げる
+  birthRatePressure+=(e.disposableIncome-300)*0.002;
 
-  e.birthRate+=birthRatePressure*0.02;
-  e.birthRate=clamp(e.birthRate,0.70,2.00);
+  // 毎月少しずつ現在の経済状況を反映
+  e.birthRate+=birthRatePressure;
 
+  e.birthRate=clamp(
+    e.birthRate,
+    0.70,
+    2.00
+  );
   // -------------------------
   // 出生数
   // -------------------------
