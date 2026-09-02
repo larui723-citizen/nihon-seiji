@@ -1564,12 +1564,24 @@ function renderParty(){
  <div class="col12 card gradient">
  <div class="section-title">
   <div>
-   <h2>党の公約</h2>
+   <h2>各政党の公約</h2>
    <div class="muted">
-    現在の${esc(pp.name)}の政策・公約です。
+    各政党の現在の政策・公約を確認できます。
    </div>
   </div>
   <span class="badge cyan">政策プロフィール</span>
+ </div>
+
+ <div class="tabs2">
+  ${PARTIES.map(p=>`
+   <button
+    type="button"
+    data-action="selectPledgeParty"
+    data-party="${p.id}"
+   >
+    ${esc(p.short)}
+   </button>
+  `).join("")}
  </div>
 
  <div class="list">
@@ -1578,16 +1590,36 @@ function renderParty(){
    <div class="section-title" style="margin:0 0 8px">
     <b>${pledgeLabels[key]}</b>
     <span class="badge ${
-      pp.pledges?.[key]>=70
-        ?"green"
-        :pp.pledges?.[key]<=30
-          ?"red"
-          :"yellow"
-    }">
-     ${typeof pp.pledges?.[key]==="number"
-       ?pp.pledges[key]+"/100"
-       :"未設定"}
-    </span>
+  typeof pp.pledges?.[key]==="number"
+    ?pp.pledges[key]>=85
+      ?"green"
+      :pp.pledges[key]>=70
+        ?"cyan"
+        :pp.pledges[key]>=55
+          ?"yellow"
+          :pp.pledges[key]>=40
+            ?"yellow"
+            :pp.pledges[key]>=25
+              ?"red"
+              :"red"
+    :""
+}">
+ ${
+  typeof pp.pledges?.[key]==="number"
+    ?pp.pledges[key]>=85
+      ?"最重要政策"
+      :pp.pledges[key]>=70
+        ?"積極推進"
+        :pp.pledges[key]>=55
+          ?"推進"
+          :pp.pledges[key]>=40
+            ?"慎重"
+            :pp.pledges[key]>=25
+              ?"抑制的"
+              :"強く反対"
+    :"未設定"
+ }
+</span>
    </div>
 
    <div class="bar">
@@ -4172,6 +4204,12 @@ if(a==="nextMonth"){nextMonth();return}
 
 if(a==="peopleTab"){
 state.selectedPeopleTab=b.dataset.people;
+render();
+return;
+}
+
+if(a==="selectPledgeParty"){
+state.selectedPledgeParty=b.dataset.party;
 render();
 return;
 }
