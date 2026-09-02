@@ -1018,7 +1018,20 @@ player:null,
 parties,
 politicians,
 partyMembers,
-governmentPartyId:["ldp","ishin","cra","dpfp"][rint(0,3)],
+governmentPartyId:(()=>{
+ const majority=Math.floor(lowerTotal/2)+1;
+
+ const winner=PARTIES
+  .map(p=>({
+   id:p.id,
+   seats:parties[p.id].lowerSeats
+  }))
+  .sort((a,b)=>b.seats-a.seats)[0];
+
+ return winner && winner.seats>=majority
+  ? winner.id
+  : null;
+})(),
 actionCount:0,
 actionMax:4,
 logs:["ゲーム開始準備完了。"],
