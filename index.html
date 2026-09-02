@@ -1403,6 +1403,15 @@ ${data.map((x,i)=>`
 <div style="font-size:24px;font-weight:900;margin-top:4px">${x[1]} <span class="small">${x[2]}</span></div>
 <div class="bar"><span style="width:${35+(i*11)%55}%"></span></div>
 </div>`).join("")}
+
+<div class="col12 card">
+<h3>GDP推移</h3>
+<div class="muted">過去のゲーム内GDPを表示します。</div>
+<div style="height:260px;margin-top:12px">
+<canvas id="gdpChart"></canvas>
+</div>
+</div>
+
 <div class="col12 card">
 <h3>経済イベント</h3>
 <div class="muted">
@@ -1411,6 +1420,43 @@ ${data.map((x,i)=>`
 </div>
 </div>
 </div>`;
+}
+  function drawGDPChart(){
+  const canvas=document.getElementById("gdpChart");
+  if(!canvas) return;
+
+  const ctx=canvas.getContext("2d");
+  const history=Array.isArray(state.economyHistory)
+    ? [...state.economyHistory].reverse()
+    : [];
+
+  if(history.length<2) return;
+
+  const values=history.map(x=>Number(x.gdp)||0);
+
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  const w=canvas.width;
+  const h=canvas.height;
+  const pad=30;
+
+  const min=Math.min(...values);
+  const max=Math.max(...values);
+  const range=(max-min)||1;
+
+  ctx.beginPath();
+
+  values.forEach((value,i)=>{
+    const x=pad+(i/(values.length-1))*(w-pad*2);
+    const y=h-pad-((value-min)/range)*(h-pad*2);
+
+    if(i===0) ctx.moveTo(x,y);
+    else ctx.lineTo(x,y);
+  });
+
+  ctx.strokeStyle="#111";
+  ctx.lineWidth=2;
+  ctx.stroke();
 }
 
 function renderNetwork(){
