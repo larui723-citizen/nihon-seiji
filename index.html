@@ -1077,6 +1077,7 @@ leadership:{
  termStart:null,
  termEnd:null,
  scheduledElection:null,
+ candidacyDecision:null,
  emergency:false,
  emergencyReason:null
 },
@@ -2988,9 +2989,33 @@ localStorage.setItem(STORAGE_KEY,JSON.stringify(state));
 ========================================================= */
 
 function leadershipPrepare(){
-if(isLeader()){
-showToast("すでに党首です。");
-return;
+ if(isLeader()){
+  showToast("すでに党首です。");
+  return;
+ }
+ const pp=getPlayerParty();
+ if(!pp)return;
+
+ state.leadership.active=true;
+ state.leadership.candidates=[{
+  id:"player",
+  name:state.player.name,
+  views:makeViews(state.player)
+ }];
+
+ const others=state.politicians
+ .filter(p=>p.partyId===pp.id && p.id!==state.player.id && p.active)
+ .sort((a,b)=>b.ambition-a.ambition)
+ .slice(0,3);
+
+ others.forEach(p=>{
+  state.leadership.candidates.push({
+   id:p.id,name:p.name,views:makeViews(p)
+  });
+ });
+
+ log("党首選が告示された。");
+ openLeadershipModal();
 }
 const pp=getPlayerParty();
 if(!pp)return;
@@ -3016,7 +3041,46 @@ id:p.id,name:p.name,views:makeViews(p)
 log("党首選が告示された。");
 openLeadershipModal();
 }
+function leadershipCandidacyDecision(){
+ const scheduled=state.leadership.scheduledElection;
+ if(!scheduled)return;
 
+ state.leadership.candidacyDecision=null;
+
+ openModal(
+  "党首選への立候補",
+  `
+  <p>
+   次回党首選は
+   <b>${scheduled.year}年${scheduled.month}月</b>
+   に開催されます。
+  </p>
+
+  <p class="muted">
+   あなたは今回の党首選に立候補しますか？
+  </p>
+
+  <div class="actions">
+   <button
+    type="button"
+    class="primary"
+    data-action="decideLeadershipCandidacy"
+    data-decision="yes"
+   >
+    立候補する
+   </button>
+
+   <button
+    type="button"
+    data-action="decideLeadershipCandidacy"
+    data-decision="no"
+   >
+    立候補しない
+   </button>
+  </div>
+  `
+ );
+}
 function makeViews(p){
 return {
 nuclear:clamp(Math.round(p.execution*.65+p.ambition*.15+rint(-15,15)),0,100),
