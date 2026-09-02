@@ -1426,7 +1426,12 @@ ${data.map((x,i)=>`
   const canvas=document.getElementById("gdpChart");
   if(!canvas)return;
 
-  const ctx=canvas.getContext("2d");
+
+    const rect=canvas.getBoundingClientRect();
+canvas.width=Math.round(rect.width);
+canvas.height=Math.round(rect.height);
+
+const ctx=canvas.getContext("2d");
   const history=Array.isArray(state.economyHistory)
     ? [...state.economyHistory].reverse()
     : [];
@@ -1435,7 +1440,8 @@ ${data.map((x,i)=>`
 
   const values=history.map(x=>Number(x.gdp)||0);
 
-  const w=canvas.clientWidth;
+    const w=canvas.width;
+const h=canvas.height;
 const h=canvas.clientHeight;
   const pad=45;
 
