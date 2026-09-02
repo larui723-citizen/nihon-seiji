@@ -846,6 +846,8 @@ return false;
 }
 
 function normalizeState(){
+ if(!state.economy)state.economy={};
+if(typeof state.economy.netMigration!=="number")state.economy.netMigration=180000;   
 state.actionMax=4;
 state.actionCount=clamp(Number(state.actionCount)||0,0,4);
 if(!state.tab)state.tab="home";
