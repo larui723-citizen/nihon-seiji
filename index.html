@@ -1162,8 +1162,22 @@ PARTIES.forEach(a=>{
  });
 });
 
-const currentBill=makeBill(1);
+function getCoalitionScore(partyAId,partyBId){
+ const relation=
+  state?.partyRelations?.[partyAId]?.[partyBId];
 
+ if(!relation)return 0;
+
+ return clamp(
+  relation.coalitionAffinity*.5+
+  relation.cooperation*.3+
+  (100-relation.conflict)*.2,
+  0,
+  100
+ );
+}
+
+const currentBill=makeBill(1);
 return {
 started:false,
 tab:"home",
