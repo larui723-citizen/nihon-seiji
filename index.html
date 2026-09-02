@@ -1424,42 +1424,85 @@ ${data.map((x,i)=>`
 }
   function drawGDPChart(){
   const canvas=document.getElementById("gdpChart");
-  if(!canvas) return;
+  if(!canvas)return;
 
   const ctx=canvas.getContext("2d");
   const history=Array.isArray(state.economyHistory)
     ? [...state.economyHistory].reverse()
     : [];
 
-  if(history.length<2) return;
+  if(history.length<2)return;
 
   const values=history.map(x=>Number(x.gdp)||0);
 
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-
   const w=canvas.width;
   const h=canvas.height;
-  const pad=30;
+  const pad=45;
 
   const min=Math.min(...values);
   const max=Math.max(...values);
   const range=(max-min)||1;
 
+  ctx.clearRect(0,0,w,h);
+
+  // 背景
+  ctx.fillStyle="#091727";
+  ctx.fillRect(0,0,w,h);
+
+  // 横軸・縦軸
+  ctx.strokeStyle="#9eb1c9";
+  ctx.lineWidth=1;
+
+  ctx.beginPath();
+  ctx.moveTo(pad,20);
+  ctx.lineTo(pad,h-pad);
+  ctx.lineTo(w-20,h-pad);
+  ctx.stroke();
+
+  // GDPの線
   ctx.beginPath();
 
   values.forEach((value,i)=>{
-    const x=pad+(i/(values.length-1))*(w-pad*2);
-    const y=h-pad-((value-min)/range)*(h-pad*2);
+    const x=pad+(i/(values.length-1))*(w-pad-20);
+    const y=h-pad-((value-min)/range)*(h-pad-40);
 
-    if(i===0) ctx.moveTo(x,y);
-    else ctx.lineTo(x,y);
+    if(i===0){
+      ctx.moveTo(x,y);
+    }else{
+      ctx.lineTo(x,y);
+    }
   });
 
-  ctx.strokeStyle="#111";
-  ctx.lineWidth=2;
+  ctx.strokeStyle="#36d58a";
+  ctx.lineWidth=3;
   ctx.stroke();
-}
 
+  // GDPの数値
+  ctx.fillStyle="#eef5ff";
+  ctx.font="12px sans-serif";
+
+  values.forEach((value,i)=>{
+    const x=pad+(i/(values.length-1))*(w-pad-20);
+    const y=h-pad-((value-min)/range)*(h-pad-40);
+
+    ctx.beginPath();
+    ctx.arc(x,y,4,0,Math.PI*2);
+    ctx.fill();
+
+    ctx.fillText(
+      value.toFixed(1),
+      x-15,
+      y-10
+    );
+  });
+
+  // 最小値・最大値
+  ctx.fillStyle="#9eb1c9";
+  ctx.font="11px sans-serif";
+
+  ctx.fillText(max.toFixed(1),5,25);
+  ctx.fillText(min.toFixed(1),5,h-pad);
+}
 function renderNetwork(){
 const list=state.politicians.filter(p=>p.active && p.id!==state.player.id)
 .sort((a,b)=>(b.relation||0)-(a.relation||0));
