@@ -2242,51 +2242,92 @@ leadershipPrepare();
 ========================================================= */
 
 function voteBill(vote){
-if(state.player.house!=="衆院" && state.player.house!=="参院"){
-showToast("国会議員ではありません。");
-return;
-}
-state.bill.support=0;
-state.bill.oppose=0;
-state.bill.abstain=0;
+  if(state.player.house!=="衆院" && state.player.house!=="参院"){
+    showToast("国会議員ではありません。");
+    return;
+  }
 
-if(vote==="support")state.bill.support++;
-if(vote==="oppose")state.bill.oppose++;
-if(vote==="abstain")state.bill.abstain++;
+  state.bill.playerVote=vote;
 
-log("あなたは法案に"+(vote==="support"?"賛成":vote==="oppose"?"反対":"棄権")+"した。");
-showToast("投票を記録しました。");
-render();
+  log(
+    "あなたは法案に"+
+    (vote==="support"?"賛成":
+     vote==="oppose"?"反対":"棄権")+
+    "した。"
+  );
+
+  showToast("あなたの投票を記録しました。");
+  render();
 }
 
 function resolveBill(){
-const bill=state.bill;
-let support=0,oppose=0,abstain=0;
+  const bill=state.bill;
 
-PARTIES.forEach(p=>{
-const x=state.parties[p.id];
-let pos=partyVotePosition(p);
-const seats=state.player.house==="参院"?x.upperSeats:x.lowerSeats;
-if(pos==="賛成")support+=seats;
-else oppose+=seats;
-});
+  let support=0;
+  let oppose=0;
+  let abstain=0;
 
-support+=bill.support;
-oppose+=bill.oppose;
-abstain+=bill.abstain;
+  // 各党の議席をもとに投票
+  PARTIES.forEach(p=>{
+    const x=state.parties[p.id];
 
-const passed=support>oppose;
-addNews("politics",
-passed?"法案が国会を通過":"法案が国会で否決",
-"ゲーム内シナリオ。"+bill.title+"は"+(passed?"可決":"否決")+"された。"
-);
+    const seats=
+      state.player.house==="参院"
+        ? x.upperSeats
+        : x.lowerSeats;
 
-log("法案「"+bill.title+"」を採決。結果："+(passed?"可決":"否決")+"。");
-state.bill=makeBill(rint(1,7));
-render();
-showToast(passed?"法案は可決されました。":"法案は否決されました。");
+    const pos=partyVotePosition(p);
+
+    if(pos==="賛成"){
+      support+=seats;
+    }else if(pos==="反対"){
+      oppose+=seats;
+    }else{
+      abstain+=seats;
+    }
+  });
+
+  // プレイヤー本人の票
+  if(state.bill.playerVote==="support"){
+    support++;
+  }else if(state.bill.playerVote==="oppose"){
+    oppose++;
+  }else if(state.bill.playerVote==="abstain"){
+    abstain++;
+  }
+
+  const passed=support>oppose;
+
+  addNews(
+    "politics",
+    passed?"法案が国会を通過":"法案が国会で否決",
+    "ゲーム内シナリオ。"+
+    bill.title+
+    "は"+
+    (passed?"可決":"否決")+
+    "された。"
+  );
+
+  log(
+    "法案「"+
+    bill.title+
+    "」を採決。"+
+    "賛成"+support+
+    "・反対"+oppose+
+    "・棄権"+abstain+
+    "。結果："+(passed?"可決":"否決")+"。"
+  );
+
+  state.bill=makeBill(rint(1,7));
+
+  render();
+
+  showToast(
+    passed
+      ?"法案は可決されました。"
+      :"法案は否決されました。"
+  );
 }
-
 /* =========================================================
 選挙
 ========================================================= */
