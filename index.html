@@ -2666,6 +2666,30 @@ function updatePartyPledgePressure(){
 );
 }
 
+function generatePledgeText(key,value,baseText){
+ if(value>=85){
+  return baseText+" この政策を最重要課題として強力に推進する。";
+ }
+
+ if(value>=70){
+  return baseText+" この政策を積極的に推進する。";
+ }
+
+ if(value>=55){
+  return baseText+" この政策を着実に推進する。";
+ }
+
+ if(value>=40){
+  return baseText+" この政策については慎重に検討する。";
+ }
+
+ if(value>=25){
+  return baseText+" この政策の拡大には慎重な立場を取る。";
+ }
+
+ return baseText+" この政策の拡大には強く反対する。";
+}
+
 function evolvePartyPledges(){
  const pledgeKeys=[
   "economy",
@@ -2710,6 +2734,11 @@ function evolvePartyPledges(){
   );
 
  party.pledges[key]=newValue;
+party.pledgeTexts[key]=generatePledgeText(
+ key,
+ newValue,
+ party.pledgeTexts?.[key]||""
+);
 
 party.pledgeDynamics.history.push({
  date:state.date,
