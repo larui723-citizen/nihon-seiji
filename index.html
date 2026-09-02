@@ -2689,29 +2689,43 @@ function getPartyPolicyTarget(party,key){
 }
 
 function generatePledgeText(key,value,baseText){
+ const originalText={
+  economy:"成長投資と経済基盤の強化を進め、国民所得の向上を目指す。",
+  taxation:"財政の持続可能性と経済成長の両立を目指す。",
+  welfare:"社会保障制度を持続可能なものとし、国民生活の安心を守る。",
+  education:"教育への投資を強化し、次世代を担う人材を育成する。",
+  childcare:"子育て世帯への支援を拡充し、少子化対策を進める。",
+  diplomacy:"国益を守り、国際社会における日本の役割を強化する。",
+  defense:"防衛力と安全保障体制を強化し、国民の安全を守る。",
+  energy:"安定的で安価なエネルギー供給を確保する。",
+  environment:"環境保全と経済成長の両立を目指す。",
+  constitutionalReform:"日本の将来に必要な憲法改正について議論を進める。"
+ };
+
+ const text=originalText[key]||baseText||"政策の実現を目指す。";
+
  if(value>=85){
-  return baseText+" この政策を最重要課題として強力に推進する。";
+  return text+" 最重要課題として強力に推進する。";
  }
 
  if(value>=70){
-  return baseText+" この政策を積極的に推進する。";
+  return text+" 積極的に推進する。";
  }
 
  if(value>=55){
-  return baseText+" この政策を着実に推進する。";
+  return text+" 着実に推進する。";
  }
 
  if(value>=40){
-  return baseText+" この政策については慎重に検討する。";
+  return text+" 慎重に検討する。";
  }
 
  if(value>=25){
-  return baseText+" この政策の拡大には慎重な立場を取る。";
+  return text+" 拡大には慎重な立場を取る。";
  }
 
- return baseText+" この政策の拡大には強く反対する。";
+ return text+" 拡大には強く反対する。";
 }
-
 function evolvePartyPledges(){
  const domainPressures=getPolicyDomainPressures();
 
