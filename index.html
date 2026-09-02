@@ -2007,9 +2007,9 @@ function updatePopulationStats(){
     e.population*targetWorkingAgeShare;
 
   // 人口構造は急激には変化しない
-  e.workingAgePopulation=
-    e.workingAgePopulation*0.995+
-    targetWorkingAgePopulation*0.005;
+ e.workingAgePopulation=
+  e.workingAgePopulation*0.98+
+  targetWorkingAgePopulation*0.02;
 
   // 基準値から大きく外れないようにする
   e.workingAgePopulation=clamp(
