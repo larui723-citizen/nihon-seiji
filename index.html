@@ -2993,15 +2993,20 @@ function leadershipPrepare(){
   showToast("すでに党首です。");
   return;
  }
+
  const pp=getPlayerParty();
  if(!pp)return;
 
  state.leadership.active=true;
- state.leadership.candidates=[{
-  id:"player",
-  name:state.player.name,
-  views:makeViews(state.player)
- }];
+ state.leadership.candidates=[];
+
+ if(state.leadership.candidacyDecision===true){
+  state.leadership.candidates.push({
+   id:"player",
+   name:state.player.name,
+   views:makeViews(state.player)
+  });
+ }
 
  const others=state.politicians
  .filter(p=>p.partyId===pp.id && p.id!==state.player.id && p.active)
@@ -3010,36 +3015,20 @@ function leadershipPrepare(){
 
  others.forEach(p=>{
   state.leadership.candidates.push({
-   id:p.id,name:p.name,views:makeViews(p)
+   id:p.id,
+   name:p.name,
+   views:makeViews(p)
   });
  });
 
- log("党首選が告示された。");
+ if(!state.leadership.candidates.length){
+  state.leadership.active=false;
+  log("党首選の候補者がいないため、党首選を開催できなかった。");
+  return;
+ }
+
+ log("党首選が開催された。");
  openLeadershipModal();
-}
-const pp=getPlayerParty();
-if(!pp)return;
-
-state.leadership.active=true;
-state.leadership.candidates=[{
-id:"player",
-name:state.player.name,
-views:makeViews(state.player)
-}];
-
-const others=state.politicians
-.filter(p=>p.partyId===pp.id && p.id!==state.player.id && p.active)
-.sort((a,b)=>b.ambition-a.ambition)
-.slice(0,3);
-
-others.forEach(p=>{
-state.leadership.candidates.push({
-id:p.id,name:p.name,views:makeViews(p)
-});
-});
-
-log("党首選が告示された。");
-openLeadershipModal();
 }
 function leadershipCandidacyDecision(){
  const scheduled=state.leadership.scheduledElection;
