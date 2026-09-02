@@ -2888,12 +2888,15 @@ function updateGDPStats(){
   e.gni=Number(e.gni.toFixed(1));
 }
 function recordEconomyHistory(){
-    if(!Array.isArray(state.economyHistory)){
+  if(!Array.isArray(state.economyHistory)){
     state.economyHistory=[];
   }
-    const e=state.economy;
-   year:state.year,
-    month:state.month,
+
+  const e=state.economy;
+
+  state.economyHistory.unshift({
+    year:state.date.year,
+    month:state.date.month,
     nikkei:e.nikkei,
     gdp:e.gdp,
     nominalGDP:e.nominalGDP,
@@ -2906,7 +2909,8 @@ function recordEconomyHistory(){
     potentialGDP:e.potentialGDP,
     gdpGap:e.gdpGap
   });
-    state.economyHistory.unshift({
+
+  state.economyHistory=state.economyHistory.slice(0,120);
 }
 /* =========================================================
 その他
