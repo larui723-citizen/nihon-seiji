@@ -1252,6 +1252,8 @@ ${PARTIES.filter(p=>(state.parties[p.id].lowerSeats+state.parties[p.id].upperSea
 <button type="button" data-action="resolveBill">採決を実施</button>
 </div>
 
+<div id="billResult"></div>
+
 <hr>
 <h3>政党別の投票傾向</h3>
 <div class="list">
@@ -2317,8 +2319,33 @@ function resolveBill(){
     "・棄権"+abstain+
     "。結果："+(passed?"可決":"否決")+"。"
   );
+ state.lastBillResult={
+  playerVote:state.bill.playerVote || "abstain",
+  support:support,
+  oppose:oppose,
+  abstain:abstain,
+  passed:passed,
+  title:state.bill.title
+};
+const resultBox=document.getElementById("billResult");
 
-  state.bill=makeBill(rint(1,7));
+if(resultBox){
+  const voteText=
+    state.lastBillResult.playerVote==="support"
+      ?"賛成"
+      :state.lastBillResult.playerVote==="oppose"
+        ?"反対"
+        :"棄権";
+
+  resultBox.innerHTML=
+    "<strong>前回の採決結果</strong><br>"+
+    "あなたの投票："+voteText+"<br>"+
+    "賛成："+state.lastBillResult.support+"票<br>"+
+    "反対："+state.lastBillResult.oppose+"票<br>"+
+    "棄権："+state.lastBillResult.abstain+"票<br>"+
+    "結果："+(state.lastBillResult.passed?"可決":"否決");
+}
+state.bill=makeBill(rint(1,7));
 
   render();
 
