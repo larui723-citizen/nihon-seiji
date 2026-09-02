@@ -1995,7 +1995,27 @@ function updatePopulationStats(){
     -500000,
     500000
   );
+  // -------------------------
+  // 高齢化率
+  // -------------------------
+  // 出生率が低いほど、高齢者の割合が徐々に上昇する
+  let agingPressure=0;
 
+  if(e.birthRate<1.5){
+    agingPressure+=(1.5-e.birthRate)*0.015;
+  }
+
+  if(e.birthRate>1.5){
+    agingPressure-=(e.birthRate-1.5)*0.008;
+  }
+
+  e.agingRate+=agingPressure;
+
+  e.agingRate=clamp(
+    e.agingRate,
+    20,
+    40
+  );
   // -------------------------
   // 生産年齢人口
   // -------------------------
