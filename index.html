@@ -1641,6 +1641,37 @@ function renderParty(){
      </div>
     </div>
    `).join("")}
+     </div>
+
+   <div class="card" style="margin-top:16px">
+    <div class="section-title">
+     <div>
+      <h3>公約変更履歴</h3>
+      <div class="muted">
+       ${esc(selected.name)}の過去の公約変更を確認できます。
+      </div>
+     </div>
+    </div>
+
+    <div class="list">
+     ${
+      selected.pledgeDynamics?.history?.length
+       ? selected.pledgeDynamics.history.slice().reverse().map(h=>`
+        <div class="row">
+         <div>
+          <b>${esc(pledgeLabels[h.policy]||h.policy)}</b>
+          <div class="muted">
+           ${esc(h.reason||"政策方針の見直し")}
+          </div>
+         </div>
+         <span class="badge cyan">
+          ${h.oldValue} → ${h.newValue}
+         </span>
+        </div>
+       `).join("")
+       :'<div class="muted">まだ公約の変更履歴はありません。</div>'
+     }
+    </div>
    </div>
    `;
  })()}
