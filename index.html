@@ -4751,8 +4751,11 @@ if(a==="memberMeet"){memberMeet(b.dataset.id);return}
 if(a==="memberPromote"){memberPromote(b.dataset.id);return}
 
 if(a==="leadershipPrepare"){leadershipPrepare();return}
+if(a==="decideLeadershipCandidacy"){
+ decideLeadershipCandidacy(b.dataset.decision);
+ return;
+}
 if(a==="leadershipVote"){leadershipVote(b.dataset.id);return}
-
 if(a==="voteBill"){
 voteBill(b.dataset.vote);
 return;
