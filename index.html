@@ -1502,6 +1502,21 @@ ${data.map((x,i)=>`
 
   ctx.fillText(max.toFixed(1),5,25);
   ctx.fillText(min.toFixed(1),5,h-pad);
+      // 横軸の年月
+  ctx.fillStyle="#9eb1c9";
+  ctx.font="11px sans-serif";
+
+  history.forEach((item,i)=>{
+    if(i % Math.max(1,Math.floor(history.length/6)) !== 0) return;
+
+    const x=pad+(i/(history.length-1))*(w-pad-20);
+
+    ctx.fillText(
+      item.year+"年"+item.month+"月",
+      x-25,
+      h-8
+    );
+  });
 }
 function renderNetwork(){
 const list=state.politicians.filter(p=>p.active && p.id!==state.player.id)
