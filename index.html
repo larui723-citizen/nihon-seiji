@@ -763,18 +763,6 @@ const REAL_POLITICIANS = [
 ["p29","百田尚樹","hoshu",70,"参院","日本保守",85,76,65,91,68,95]
 ];
 
-const FICTIONAL_NAMES = [
-"青木健一","赤松雄介","秋山直人","安藤和也","石川拓真","伊藤誠司",
-"井上拓郎","岩田修一","上田亮介","内田翔太","遠藤大輔","大川俊介",
-"大西健太","岡田雅人","小川直樹","奥村達也","加納慎一","川島雄一",
-"木村直人","久保田剛","栗原達也","小林修平","近藤裕介","斎藤健吾",
-"坂本亮","佐々木誠","佐藤雄一","篠田拓也","柴田和也","清水直樹",
-"鈴木拓海","高橋健司","田中亮介","谷口翔","中川雄大","中島健太",
-"中村修","西川和也","西田拓郎","野口雄介","橋本健太","長谷川亮",
-"浜田直人","原田翔","平井雄一","福田拓也","藤井健司","藤田亮",
-"堀内大輔","前田雄介","松田健太","三浦直人","宮崎拓郎","村上翔",
-"森田健一","山口雄大","山崎直樹","山本健司","吉田拓海","渡辺亮"
-];
 
 function rand(a,b){return Math.random()*(b-a)+a}
 function rint(a,b){return Math.floor(rand(a,b+1))}
@@ -800,36 +788,54 @@ return state.politicians.find(p=>p.id===id)
 function actionLeft(){return state.actionMax-state.actionCount}
 
 function buildPoliticians(){
-const arr=REAL_POLITICIANS.map(x=>({
-id:x[0],name:x[1],partyId:x[2],age:x[3],house:x[4],group:x[5],
-human:x[6],popularity:x[7],execution:x[8],ambition:x[9],
-trust:x[10],media:x[11],active:true,foreign:[],
-familiarity:0,relation:0
-}));
+ const arr=REAL_POLITICIANS.map(x=>({
+  id:x[0],
+  name:x[1],
+  partyId:x[2],
+  age:x[3],
+  house:x[4],
+  group:x[5],
+  human:x[6],
+  popularity:x[7],
+  execution:x[8],
+  ambition:x[9],
+  trust:x[10],
+  media:x[11],
+  active:true,
+  incumbent:true,
+  foreign:[],
+  familiarity:0,
+  relation:0
+ }));
 
-FICTIONAL_NAMES.forEach((name,i)=>{
-const ps=PARTIES[i%8];
-arr.push({
-id:"f"+String(i+1).padStart(2,"0"),
-name,
-partyId:ps.id,
-age:rint(32,66),
-house:i%5===0?"参院":"衆院",
-group:"無派閥・中堅",
-human:rint(55,84),
-popularity:rint(35,75),
-execution:rint(55,86),
-ambition:rint(45,90),
-trust:rint(55,90),
-media:rint(40,88),
-active:true,
-foreign:[],
-familiarity:0,
-relation:0
-});
-});
+ const TARGET_POLITICIANS=1000;
 
-return arr;
+ while(arr.length<TARGET_POLITICIANS){
+  const i=arr.length+1;
+  const ps=PARTIES[(i-1)%PARTIES.length];
+
+  arr.push({
+   id:"ai_"+String(i).padStart(4,"0"),
+   name:"政治家"+String(i),
+   partyId:ps.id,
+   age:rint(25,72),
+   house:"衆院",
+   group:"無派閥・中堅",
+   human:rint(55,84),
+   popularity:rint(25,75),
+   execution:rint(50,86),
+   ambition:rint(40,90),
+   trust:rint(50,90),
+   media:rint(35,88),
+   active:true,
+   incumbent:false,
+   foreign:[],
+   familiarity:0,
+   relation:0
+  });
+ }
+
+ return arr;
 }
 
 function defaultState(){
@@ -881,8 +887,86 @@ parties.reiwa.upperSeats=5;
 parties.sdp.upperSeats=2;
 parties.hoshu.upperSeats=2;
 
+// 国会議員の議席数を実際の465議席・248議席に合わせる
+const lowerTotal=465;
+const upperTotal=248;
+
+// 現在設定されている政党議席を基準に比例配分する
+function allocateSeats(total,house){
+ const partyList=PARTIES.map(p=>({
+  id:p.id,
+  base:house==="衆院"
+   ? parties[p.id].lowerSeats
+   : parties[p.id].upperSeats
+ }));
+
+ const baseTotal=partyList.reduce((sum,p)=>sum+p.base,0);
+
+ partyList.forEach(p=>{
+  p.raw=baseTotal>0
+   ? p.base/baseTotal*total
+   : total/PARTIES.length;
+  p.seats=Math.floor(p.raw);
+  p.remainder=p.raw-p.seats;
+ });
+
+ let assigned=partyList.reduce((sum,p)=>sum+p.seats,0);
+
+ partyList
+  .sort((a,b)=>b.remainder-a.remainder)
+  .forEach(p=>{
+   if(assigned<total){
+    p.seats++;
+    assigned++;
+   }
+  });
+
+ partyList.forEach(p=>{
+  if(house==="衆院"){
+   parties[p.id].lowerSeats=p.seats;
+  }else{
+   parties[p.id].upperSeats=p.seats;
+  }
+ });
+}
+
+allocateSeats(lowerTotal,"衆院");
+allocateSeats(upperTotal,"参院");
+
+// まず全員を現職ではない政治家として初期化
 politicians.forEach(p=>{
-parties[p.partyId].members.push(p.id);
+ p.incumbent=false;
+});
+
+// 衆院465人を政党別議席数に合わせて選出
+PARTIES.forEach(p=>{
+ const candidates=politicians
+  .filter(x=>x.partyId===p.id)
+  .sort((a,b)=>(
+   (b.popularity+b.execution+b.human)
+   -
+   (a.popularity+a.execution+a.human)
+  ));
+
+ const lowerCount=parties[p.id].lowerSeats;
+ const upperCount=parties[p.id].upperSeats;
+
+ candidates.slice(0,lowerCount).forEach(x=>{
+  x.house="衆院";
+  x.incumbent=true;
+ });
+
+ const remaining=candidates
+  .filter(x=>!x.incumbent);
+
+ remaining.slice(0,upperCount).forEach(x=>{
+  x.house="参院";
+  x.incumbent=true;
+ });
+});
+
+politicians.forEach(p=>{
+ parties[p.partyId].members.push(p.id);
 });
 
 PARTIES.forEach(p=>{
