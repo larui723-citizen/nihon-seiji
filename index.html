@@ -4498,6 +4498,25 @@ relation:0
 
 state.personal.internalSupport=8;
 state.personal.nationalSupport=8;
+
+state.leadership.termStart={
+ year:state.date.year,
+ month:state.date.month
+};
+
+state.leadership.termEnd={
+ year:state.date.year+3,
+ month:state.date.month
+};
+
+state.leadership.scheduledElection={
+ year:state.date.year+3,
+ month:state.date.month
+};
+
+state.leadership.emergency=false;
+state.leadership.emergencyReason=null;
+
 state.tab="home";
 
 log(pp.short+"所属の新人議員として政界入りした。党首ではない。");
