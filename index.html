@@ -1569,9 +1569,11 @@ default:return renderHome();
 }
 
 function renderHome(){
-const pp=getPlayerParty();
-const gov=party(state.governmentPartyId);
-const support=pp?pp.support:0;
+ const pp=getPlayerParty();
+ const govParties=Array.isArray(state.governmentParties)
+  ? state.governmentParties.map(id=>party(id)).filter(Boolean)
+  : [];
+ const support=pp?pp.support:0;
 
 return `
 <div class="grid">
@@ -1583,7 +1585,14 @@ return `
 </div>
 <div>
 <span class="badge cyan">世論 ${climateName()}</span>
-<span class="badge yellow">政府：${esc(gov?.short||"未定")}</span>
+<span class="badge yellow">
+ 政府：
+ ${esc(
+  govParties.length
+   ? govParties.map(p=>p.short).join("・")
+   : "少数与党"
+ )}
+</span>
 </div>
 </div>
 <div class="kpis">
