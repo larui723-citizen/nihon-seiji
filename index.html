@@ -810,31 +810,53 @@ function buildPoliticians(){
 
  const TARGET_POLITICIANS=1000;
 
- while(arr.length<TARGET_POLITICIANS){
-  const i=arr.length+1;
-  const ps=PARTIES[(i-1)%PARTIES.length];
+ const partyWeights={
+ ldp:30,
+ ishin:11,
+ cra:12,
+ dpfp:10,
+ sanseito:8,
+ mirai:7,
+ jcp:6,
+ reiwa:5,
+ sdp:4,
+ hoshu:3
+};
 
-  arr.push({
-   id:"ai_"+String(i).padStart(4,"0"),
-   name:"政治家"+String(i),
-   partyId:ps.id,
-   age:rint(25,72),
-   house:"衆院",
-   group:"無派閥・中堅",
-   human:rint(55,84),
-   popularity:rint(25,75),
-   execution:rint(50,86),
-   ambition:rint(40,90),
-   trust:rint(50,90),
-   media:rint(35,88),
-   active:true,
-   incumbent:false,
-   foreign:[],
-   familiarity:0,
-   relation:0
-  });
+const weightedParties=[];
+
+PARTIES.forEach(p=>{
+ const weight=partyWeights[p.id]||1;
+
+ for(let i=0;i<weight;i++){
+  weightedParties.push(p);
  }
+});
 
+while(arr.length<TARGET_POLITICIANS){
+ const i=arr.length+1;
+ const ps=weightedParties[rint(0,weightedParties.length-1)];
+
+ arr.push({
+  id:"ai_"+String(i).padStart(4,"0"),
+  name:"政治家"+String(i),
+  partyId:ps.id,
+  age:rint(25,72),
+  house:"衆院",
+  group:"無派閥・中堅",
+  human:rint(55,84),
+  popularity:rint(25,75),
+  execution:rint(50,86),
+  ambition:rint(40,90),
+  trust:rint(50,90),
+  media:rint(35,88),
+  active:true,
+  incumbent:false,
+  foreign:[],
+  familiarity:0,
+  relation:0
+ });
+}
  return arr;
 }
 
@@ -869,28 +891,106 @@ PARTIES.forEach(p=>{
  };
 });
 
-parties.ldp.lowerSeats=316;
-parties.ishin.lowerSeats=36;
-parties.cra.lowerSeats=48;
-parties.dpfp.lowerSeats=28;
-parties.sanseito.lowerSeats=15;
-parties.mirai.lowerSeats=11;
-parties.jcp.lowerSeats=4;
-parties.ldp.upperSeats=118;
-parties.ishin.upperSeats=19;
-parties.cra.upperSeats=18;
-parties.dpfp.upperSeats=15;
-parties.sanseito.upperSeats=3;
-parties.mirai.upperSeats=2;
-parties.jcp.upperSeats=11;
-parties.reiwa.upperSeats=5;
-parties.sdp.upperSeats=2;
-parties.hoshu.upperSeats=2;
-
-// 国会議員の議席数を実際の465議席・248議席に合わせる
 const lowerTotal=465;
 const upperTotal=248;
 
+// 初期政党勢力。
+// 現実の勢力差をベースにしつつ、ゲーム開始ごとに変動させる。
+const initialPartyStrength={
+ ldp:30,
+ ishin:11,
+ cra:12,
+ dpfp:10,
+ sanseito:8,
+ mirai:7,
+ jcp:6,
+ reiwa:5,
+ sdp:4,
+ hoshu:3
+};
+
+function createInitialPartyScores(){
+ const scores={};
+
+ PARTIES.forEach(p=>{
+  const base=initialPartyStrength[p.id]||1;
+
+  // ゲーム開始時の世論・政治環境による変動
+  const climateEffect=
+   Math.exp(-Math.pow(p.ideology-climate,2)*3);
+
+  const randomEffect=rand(.82,1.18);
+
+  scores[p.id]=Math.max(
+   0.5,
+   base*(0.75+climateEffect*0.5)*randomEffect
+  );
+ });
+
+ return scores;
+}
+
+function allocateInitialSeats(total,scores){
+ const list=PARTIES.map(p=>({
+  id:p.id,
+  raw:scores[p.id]
+ }));
+
+ const scoreTotal=list.reduce(
+  (sum,p)=>sum+p.raw,
+  0
+ );
+
+ list.forEach(p=>{
+  p.exact=p.raw/scoreTotal*total;
+  p.seats=Math.floor(p.exact);
+  p.remainder=p.exact-p.seats;
+ });
+
+ let assigned=list.reduce(
+  (sum,p)=>sum+p.seats,
+  0
+ );
+
+ list
+  .sort((a,b)=>b.remainder-a.remainder)
+  .forEach(p=>{
+   if(assigned<total){
+    p.seats++;
+    assigned++;
+   }
+  });
+
+ return list;
+}
+
+const initialPartyScores=createInitialPartyScores();
+
+const initialLowerSeats=
+ allocateInitialSeats(
+  lowerTotal,
+  initialPartyScores
+ );
+
+const initialUpperSeats=
+ allocateInitialSeats(
+  upperTotal,
+  Object.fromEntries(
+   PARTIES.map(p=>[
+    p.id,
+    initialPartyScores[p.id]*
+    rand(.90,1.10)
+   ])
+  )
+ );
+
+initialLowerSeats.forEach(x=>{
+ parties[x.id].lowerSeats=x.seats;
+});
+
+initialUpperSeats.forEach(x=>{
+ parties[x.id].upperSeats=x.seats;
+});
 // 現在設定されている政党議席を基準に比例配分する
 function allocateSeats(total,house){
  const partyList=PARTIES.map(p=>({
