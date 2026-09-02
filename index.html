@@ -779,7 +779,9 @@ state.parties[state.player.partyId] &&
 state.parties[state.player.partyId].leaderId==="player"
 }
 function isPM(){
-return isLeader() && state.governmentPartyId===state.player.partyId
+ return isLeader() &&
+  Array.isArray(state.governmentParties) &&
+  state.governmentParties.includes(state.player.partyId);
 }
 function getPlayerParty(){return state.parties[state.player.partyId]}
 function getPolitician(id){
@@ -1118,39 +1120,33 @@ player:null,
 parties,
 politicians,
 partyMembers,
-governmentPartyId:(()=>{
+governmentParties:(()=>{
  const majority=Math.floor(lowerTotal/2)+1;
 
  const ranking=PARTIES
   .map(p=>({
    id:p.id,
-   seats:parties[p.id].lowerSeats,
-   ideology:parties[p.id].ideology
+   seats:parties[p.id].lowerSeats
   }))
   .sort((a,b)=>b.seats-a.seats);
 
- if(!ranking.length)return [];
+ if(!ranking.length){
+  return [];
+ }
 
  const lead=ranking[0];
 
- // 単独過半数
+ // 単独過半数なら単独政権
  if(lead.seats>=majority){
   return [lead.id];
  }
 
- // 最大政党を中心に、政策距離の近い政党から連立候補を選ぶ
+ // 現段階では最大政党を中心とする連立を仮設定する。
+ // 次の段階で党間政治距離・政策距離・連立関係を導入する。
  const coalition=[lead];
  let totalSeats=lead.seats;
 
- const partners=ranking
-  .slice(1)
-  .sort((a,b)=>{
-   const da=Math.abs(a.ideology-lead.ideology);
-   const db=Math.abs(b.ideology-lead.ideology);
-
-   if(da!==db)return da-db;
-   return b.seats-a.seats;
-  });
+ const partners=ranking.slice(1);
 
  for(const partner of partners){
   if(totalSeats>=majority)break;
@@ -1159,12 +1155,10 @@ governmentPartyId:(()=>{
   totalSeats+=partner.seats;
  }
 
- // どうしても過半数に届かない場合でも政権を空白にしない
- if(!coalition.length){
-  return [lead.id];
- }
-
- return coalition.map(x=>x.id);
+ // 過半数に届かなくても少数与党として政権を成立させる
+ return coalition.length
+  ? coalition.map(x=>x.id)
+  : [lead.id];
 })(),
 actionCount:0,
 actionMax:4,
