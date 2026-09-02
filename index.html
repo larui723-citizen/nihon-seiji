@@ -1094,19 +1094,72 @@ parties[p.id].published=parties[p.id].support;
 
 const partyMembers={};
 PARTIES.forEach(p=>{
-partyMembers[p.id]=[];
-for(let i=0;i<5;i++){
-partyMembers[p.id].push({
-id:"m_"+p.id+"_"+i,
-name:p.short+" 党員"+(i+1),
-partyId:p.id,
-age:rint(25,58),
-recognition:rint(10,30),
-support:rint(5,20),
-role:"一般党員",
-loyalty:rint(55,90)
+ partyMembers[p.id]=[];
+ for(let i=0;i<5;i++){
+  partyMembers[p.id].push({
+   id:"m_"+p.id+"_"+i,
+   name:p.short+" 党員"+(i+1),
+   partyId:p.id,
+   age:rint(25,58),
+   recognition:rint(10,30),
+   support:rint(5,20),
+   role:"一般党員",
+   loyalty:rint(55,90)
+  });
+ }
 });
-}
+
+// 政党間の政治関係
+const partyRelations={};
+
+PARTIES.forEach(a=>{
+ partyRelations[a.id]={};
+
+ PARTIES.forEach(b=>{
+  if(a.id===b.id){
+   partyRelations[a.id][b.id]={
+    politicalDistance:0,
+    coalitionAffinity:100,
+    cooperation:100,
+    conflict:0
+   };
+   return;
+  }
+
+  const pledgeKeys=Object.keys(a.pledges||{});
+  let pledgeDistance=0;
+
+  pledgeKeys.forEach(key=>{
+   const av=Number(a.pledges?.[key]??50);
+   const bv=Number(b.pledges?.[key]??50);
+   pledgeDistance+=Math.abs(av-bv);
+  });
+
+  pledgeDistance=
+   pledgeKeys.length
+    ? pledgeDistance/pledgeKeys.length
+    : 50;
+
+  const ideologyDistance=
+   Math.abs(
+    Number(a.ideology||0)-
+    Number(b.ideology||0)
+   )*50;
+
+  const politicalDistance=clamp(
+   pledgeDistance*.7+
+   ideologyDistance*.3,
+   0,
+   100
+  );
+
+  partyRelations[a.id][b.id]={
+   politicalDistance,
+   coalitionAffinity:100-politicalDistance,
+   cooperation:100-politicalDistance,
+   conflict:politicalDistance
+  };
+ });
 });
 
 const currentBill=makeBill(1);
@@ -1290,7 +1343,7 @@ personal:{
 },
 publishedSupport:{},
 relations:{},
-partyRelations:{},
+partyRelations,
 foreignRelations:{},
 meetings:[],
 incomingTalks:[],
