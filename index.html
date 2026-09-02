@@ -3065,7 +3065,6 @@ function leadershipCandidacyDecision(){
    >
     立候補する
    </button>
-
    <button
     type="button"
     data-action="decideLeadershipCandidacy"
@@ -3077,6 +3076,28 @@ function leadershipCandidacyDecision(){
   `
  );
 }
+
+function decideLeadershipCandidacy(decision){
+ if(decision==="yes"){
+  state.leadership.candidacyDecision=true;
+  log("次回党首選への立候補を決めた。");
+  closeModal();
+  saveSilently();
+  render();
+  showToast("党首選への立候補を決めました。");
+  return;
+ }
+
+ if(decision==="no"){
+  state.leadership.candidacyDecision=false;
+  log("次回党首選への立候補を見送ることにした。");
+  closeModal();
+  saveSilently();
+  render();
+  showToast("次回党首選への立候補を見送りました。");
+ }
+}
+
 function makeViews(p){
 return {
 nuclear:clamp(Math.round(p.execution*.65+p.ambition*.15+rint(-15,15)),0,100),
