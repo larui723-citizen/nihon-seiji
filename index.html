@@ -1164,7 +1164,7 @@ PARTIES.forEach(a=>{
 
 function getCoalitionScore(partyAId,partyBId){
  const relation=
-  state?.partyRelations?.[partyAId]?.[partyBId];
+  state.partyRelations?.[partyAId]?.[partyBId];
 
  if(!relation)return 0;
 
@@ -1211,17 +1211,29 @@ governmentParties:(()=>{
  // 現段階では最大政党を中心とする連立を仮設定する。
  // 次の段階で党間政治距離・政策距離・連立関係を導入する。
  const coalition=[lead];
- let totalSeats=lead.seats;
+let totalSeats=lead.seats;
 
 const partners=ranking
  .slice(1)
- .map(partner=>({
-  ...partner,
-  coalitionScore:getCoalitionScore(
-   lead.id,
-   partner.id
-  )
- }))
+ .map(partner=>{
+  const relation=
+   partyRelations?.[lead.id]?.[partner.id];
+
+  const coalitionScore=relation
+   ? clamp(
+      relation.coalitionAffinity*.5+
+      relation.cooperation*.3+
+      (100-relation.conflict)*.2,
+      0,
+      100
+     )
+   : 0;
+
+  return {
+   ...partner,
+   coalitionScore
+  };
+ })
  .filter(partner=>partner.coalitionScore>=55)
  .sort((a,b)=>(
   b.coalitionScore-a.coalitionScore
