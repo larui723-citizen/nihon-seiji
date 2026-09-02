@@ -1252,7 +1252,43 @@ ${PARTIES.filter(p=>(state.parties[p.id].lowerSeats+state.parties[p.id].upperSea
 <button type="button" data-action="resolveBill">採決を実施</button>
 </div>
 
-<div id="billResult"></div>
+${state.lastBillResult?`
+<div class="card" style="margin-top:12px">
+  <h3>前回の採決結果</h3>
+  <div class="list">
+    <div class="row">
+      <span>あなたの投票</span>
+      <b>${
+        state.lastBillResult.playerVote==="support"
+          ?"賛成"
+          :state.lastBillResult.playerVote==="oppose"
+            ?"反対"
+            :"棄権"
+      }</b>
+    </div>
+
+    <div class="row">
+      <span>賛成</span>
+      <b>${state.lastBillResult.support}票</b>
+    </div>
+
+    <div class="row">
+      <span>反対</span>
+      <b>${state.lastBillResult.oppose}票</b>
+    </div>
+
+    <div class="row">
+      <span>棄権</span>
+      <b>${state.lastBillResult.abstain}票</b>
+    </div>
+
+    <div class="row">
+      <span>結果</span>
+      <b>${state.lastBillResult.passed?"可決":"否決"}</b>
+    </div>
+  </div>
+</div>
+`:""}
 
 <hr>
 <h3>政党別の投票傾向</h3>
