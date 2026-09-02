@@ -645,8 +645,37 @@ wage:3.2,
 usdjpy:148,
 crime:102,
 violentCrime:5800,
-foreignCases:620
+foreignCases:620,
+
+  // GDP・国民所得
+  gdp:610,
+  nominalGDP:610,
+  realGDP:600,
+  gdpGrowth:1.2,
+  perCapitaGDP:490,
+  gdpDeflator:101.7,
+  gni:625,
+  perCapitaGNI:500,
+  potentialGDP:615,
+  gdpGap:-0.8
 },
+  economyHistory:[
+  {
+    year:2026,
+    month:9,
+    nikkei:42500,
+    gdp:610,
+    nominalGDP:610,
+    realGDP:600,
+    gdpGrowth:1.2,
+    perCapitaGDP:490,
+    gdpDeflator:101.7,
+    gni:625,
+    perCapitaGNI:500,
+    potentialGDP:615,
+    gdpGap:-0.8
+  }
+],
 personal:{
 nationalSupport:8,
 recognition:12,
@@ -1350,7 +1379,17 @@ const data=[
 ["ドル円",fmt(e.usdjpy,0),"円"],
 ["犯罪指数",fmt(e.crime),"pt"],
 ["暴力犯罪認知件数",fmt(e.violentCrime,0),"件"],
-["外国籍容疑者が関与した事件数",fmt(e.foreignCases,0),"件"]
+["外国籍容疑者が関与した事件数",fmt(e.foreignCases,0),"件"],
+  ["GDP",fmt(e.gdp,1),"兆円"],
+["名目GDP",fmt(e.nominalGDP,1),"兆円"],
+["実質GDP",fmt(e.realGDP,1),"兆円"],
+["GDP成長率",fmt(e.gdpGrowth,2),"％"],
+["一人当たりGDP",fmt(e.perCapitaGDP,1),"万円"],
+["GDPデフレーター",fmt(e.gdpDeflator,2),"pt"],
+["GNI",fmt(e.gni,1),"兆円"],
+["一人当たりGNI",fmt(e.perCapitaGNI,1),"万円"],
+["潜在GDP",fmt(e.potentialGDP,1),"兆円"],
+["GDPギャップ",fmt(e.gdpGap,2),"％"]
 ];
 return `
 <div class="grid">
@@ -1583,6 +1622,8 @@ addNews("politics","各党の政策調整が活発化","ゲーム内シナリオ
 maybeAgePoliticians();
 maybeForeignMeeting();
 maybeEconomicEvent();
+  updateGDPStats();
+recordEconomyHistory();
 }
 
 function publishSupport(){
@@ -2770,8 +2811,108 @@ function maybeEconomicEvent(){
     state.eventState.cooldown=event.cooldown;
   }
 
-  log("経済イベント「"+event.name+"」が発生した。");
+   log("経済イベント「"+event.name+"」が発生した。");
 }
+
+function updateGDPStats(){
+  const e=state.economy;
+
+  if(typeof e.gdp!=="number") e.gdp=610;
+  if(typeof e.nominalGDP!=="number") e.nominalGDP=610;
+  if(typeof e.realGDP!=="number") e.realGDP=600;
+  if(typeof e.gdpGrowth!=="number") e.gdpGrowth=1.2;
+  if(typeof e.perCapitaGDP!=="number") e.perCapitaGDP=490;
+  if(typeof e.gdpDeflator!=="number") e.gdpDeflator=101.7;
+  if(typeof e.gni!=="number") e.gni=625;
+  if(typeof e.perCapitaGNI!=="number") e.perCapitaGNI=500;
+  if(typeof e.potentialGDP!=="number") e.potentialGDP=615;
+  if(typeof e.gdpGap!=="number") e.gdpGap=-0.8;
+
+  // 景気を決める基本要因
+  let growth=0;
+
+  if(e.nikkei>45000) growth+=0.15;
+  if(e.nikkei<38000) growth-=0.15;
+
+  if(e.cpi>4) growth-=0.15;
+  if(e.cpi<1) growth-=0.05;
+
+  if(e.unemployment<2.5) growth+=0.15;
+  if(e.unemployment>3.5) growth-=0.20;
+
+  if(e.wage>3) growth+=0.15;
+  if(e.wage<1) growth-=0.10;
+
+  if(e.rate>2) growth-=0.10;
+  if(e.rate<0.5) growth+=0.05;
+
+  if(e.usdjpy>160) growth-=0.10;
+  if(e.usdjpy<130) growth-=0.05;
+
+  growth+=(Math.random()-0.5)*0.30;
+
+  e.gdpGrowth=clamp(
+    e.gdpGrowth*0.65+growth,
+    -5,
+    6
+  );
+
+  e.realGDP*=1+e.gdpGrowth/100;
+  e.realGDP=clamp(e.realGDP,400,800);
+
+  const inflationEffect=(e.cpi-2)*0.12;
+  e.gdpDeflator+=inflationEffect;
+  e.gdpDeflator=clamp(e.gdpDeflator,85,125);
+
+  e.nominalGDP=e.realGDP*(e.gdpDeflator/100);
+  e.gdp=e.nominalGDP;
+
+  e.potentialGDP*=1.0015;
+  e.potentialGDP=clamp(e.potentialGDP,500,850);
+
+  e.gdpGap=((e.realGDP-e.potentialGDP)/e.potentialGDP)*100;
+  e.gdpGap=clamp(e.gdpGap,-10,10);
+
+  const populationBase=125.0;
+  e.perCapitaGDP=(e.realGDP/populationBase)*100;
+
+  e.gni=e.nominalGDP*1.025;
+  e.perCapitaGNI=(e.gni/populationBase)*100;
+
+  e.gdp=Number(e.gdp.toFixed(1));
+  e.nominalGDP=Number(e.nominalGDP.toFixed(1));
+  e.realGDP=Number(e.realGDP.toFixed(1));
+  e.gdpGrowth=Number(e.gdpGrowth.toFixed(2));
+  e.perCapitaGDP=Number(e.perCapitaGDP.toFixed(1));
+  e.gdpDeflator=Number(e.gdpDeflator.toFixed(2));
+  e.gni=Number(e.gni.toFixed(1));
+｝
+function recordEconomyHistory(){
+    if(!Array.isArray(state.economyHistory)){
+    state.economyHistory=[];
+  }
+    const e=state.economy;
+   year:state.year,
+    month:state.month,
+    nikkei:e.nikkei,
+    gdp:e.gdp,
+    nominalGDP:e.nominalGDP,
+    realGDP:e.realGDP,
+    gdpGrowth:e.gdpGrowth,
+    perCapitaGDP:e.perCapitaGDP,
+    gdpDeflator:e.gdpDeflator,
+    gni:e.gni,
+    perCapitaGNI:e.perCapitaGNI,
+    potentialGDP:e.potentialGDP,
+    gdpGap:e.gdpGap
+  });
+    state.economyHistory.unshift({
+}
+/* =========================================================
+その他
+========================================================= */
+
+function maybeAgePoliticians(){
 
 /* =========================================================
 その他
