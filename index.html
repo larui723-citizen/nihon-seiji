@@ -2665,6 +2665,28 @@ function updatePartyPledgePressure(){
 
 );
 }
+function getPartyPolicyTarget(party,key){
+ const ideology=Number(party.ideology??.5);
+
+ const targets={
+  economy:50+ideology*30,
+  taxation:70-ideology*25,
+  welfare:75-ideology*35,
+  education:65+ideology*10,
+  childcare:65-ideology*5,
+  diplomacy:50+ideology*35,
+  defense:35+ideology*55,
+  energy:55+ideology*20,
+  environment:75-ideology*25,
+  constitutionalReform:20+ideology*70
+ };
+
+ return clamp(
+  Math.round(targets[key]??50),
+  0,
+  100
+ );
+}
 
 function generatePledgeText(key,value,baseText){
  if(value>=85){
