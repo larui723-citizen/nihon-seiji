@@ -1893,7 +1893,28 @@ saveSilently();
 render();
 showToast("翌月へ進みました。");
 }
+function updatePopulationStats(){
+  const e=state.economy;
 
+  if(typeof e.population!=="number")e.population=123.5;
+  if(typeof e.births!=="number")e.births=680000;
+  if(typeof e.deaths!=="number")e.deaths=1600000;
+  if(typeof e.netMigration!=="number")e.netMigration=180000;
+
+  // 出生・死亡・純移入による年間人口増減
+  const annualChange=
+    e.births-e.deaths+e.netMigration;
+
+  // 1か月分に換算（人 → 百万人）
+  const monthlyChange=
+    annualChange/12/1000000;
+
+  e.population+=monthlyChange;
+
+  if(e.population<0)e.population=0;
+
+  e.population=Number(e.population.toFixed(3));
+}
 function monthlyUpdate(){
 const e=state.economy;
 e.nikkei+=rint(-900,1100);
