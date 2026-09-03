@@ -1641,11 +1641,27 @@ app.innerHTML=`
 <small>政治・政局・選挙シミュレーション</small>
 </div>
 <div class="status">
-<span class="badge cyan">${monthText(state.date)}</span>
-<span class="badge yellow">行動 ${state.actionCount}/4</span>
-<span class="badge green">${esc(getPlayerParty()?.short||"無所属")}</span>
-${isLeader()?'<span class="badge purple">党首</span>':""}
-${isPM()?'<span class="badge red">総理</span>':""}
+ <span class="badge cyan">${monthText(state.date)}</span>
+ <span class="badge ${
+   state.dietSession?.status==="open" ? "green" : "yellow"
+ }">
+  ${
+   state.dietSession?.status==="open"
+    ? "国会開会中"
+    : "国会閉会中"
+  }
+ </span>
+ ${
+  state.dietSession?.status==="open"
+   ? `<span class="badge cyan">
+       第${state.dietSession.sessionNumber}回 ${esc(state.dietSession.type)}
+      </span>`
+   : ""
+ }
+ <span class="badge yellow">行動 ${state.actionCount}/4</span>
+ <span class="badge green">${esc(getPlayerParty()?.short||"無所属")}</span>
+ ${isLeader()?'<span class="badge purple">党首</span>':""}
+ ${isPM()?'<span class="badge red">総理</span>':""}
 </div>
 </div>
 <nav class="nav" id="nav">
