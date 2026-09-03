@@ -419,11 +419,12 @@ const PARTIES = [
   }
  },
  {
-  id:"ishin",
-  name:"日本維新の会",
-  short:"維新",
-  ideology:.65,
-  color:"ishin",
+ id:"ishin",
+ name:"日本維新の会",
+ short:"維新",
+ houses:["衆院","参院"],
+ ideology:.65,
+ color:"ishin",
   pledges:{
    economy:76,
    taxation:64,
@@ -449,12 +450,13 @@ const PARTIES = [
    constitutionalReform:"統治機構改革などを含む憲法改正を目指す。"
   }
  },
- {
-  id:"cra",
-  name:"中道改革連合",
-  short:"中道改革",
-  ideology:.05,
-  color:"center",
+{
+ id:"cra",
+ name:"中道改革連合",
+ short:"中道改革",
+ houses:["衆院"],
+ ideology:.05,
+ color:"center",
   pledges:{
    economy:58,
    taxation:70,
@@ -484,6 +486,7 @@ const PARTIES = [
   id:"dpfp",
   name:"国民民主党",
   short:"国民",
+  houses:["衆院","参院"],
   ideology:.18,
   color:"center",
   pledges:{
@@ -515,6 +518,7 @@ const PARTIES = [
   id:"sanseito",
   name:"参政党",
   short:"参政",
+  houses:["衆院","参院"],
   ideology:.78,
   color:"ldp",
   pledges:{
@@ -546,6 +550,7 @@ const PARTIES = [
   id:"mirai",
   name:"チームみらい",
   short:"みらい",
+  houses:["衆院","参院"],
   ideology:.12,
   color:"green",
   pledges:{
@@ -577,6 +582,7 @@ const PARTIES = [
   id:"jcp",
   name:"日本共産党",
   short:"共産",
+  houses:["衆院","参院"],
   ideology:-.78,
   color:"left",
   pledges:{
@@ -608,6 +614,7 @@ const PARTIES = [
   id:"reiwa",
   name:"れいわ新選組",
   short:"れいわ",
+  houses:["衆院","参院"],
   ideology:-.65,
   color:"left",
   pledges:{
@@ -639,6 +646,7 @@ const PARTIES = [
   id:"sdp",
   name:"社会民主党",
   short:"社民",
+  houses:["衆院","参院"],
   ideology:-.55,
   color:"left",
   pledges:{
@@ -670,6 +678,7 @@ const PARTIES = [
   id:"hoshu",
   name:"日本保守党",
   short:"日本保守",
+  houses:["衆院","参院"],
   ideology:.82,
   color:"ldp",
   pledges:{
