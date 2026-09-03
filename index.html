@@ -2879,9 +2879,38 @@ if(kind==="diet"){
 }
 
 if(kind==="fund"){
-state.personal.fundraising+=3;
-state.personal.activityFunds+=rint(10,25);
-log("政治資金を集め、活動資金が増えた。");
+ const fundraisingPower=Number(state.personal.fundraising||0);
+ const supportBase=Number(state.personal.nationalSupport||0);
+ const localBase=Number(state.personal.localSupport||0);
+
+ const baseAmount=8;
+ const powerBonus=fundraisingPower*0.35;
+ const supportBonus=supportBase*0.08;
+ const localBonus=localBase*0.05;
+ const randomBonus=rint(0,8);
+
+ const raised=Math.max(
+  1,
+  Math.round(
+   baseAmount+
+   powerBonus+
+   supportBonus+
+   localBonus+
+   randomBonus
+  )
+ );
+
+ state.personal.fundraising=clamp(
+  fundraisingPower+1.5,
+  0,
+  100
+ );
+
+ state.personal.activityFunds+=raised;
+
+ log(
+  `政治資金を${fmtYenFromMan(raised)}集めた。`
+ );
 }
 
 state.personal.nationalSupport=clamp(state.personal.nationalSupport,0,100);
