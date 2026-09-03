@@ -386,12 +386,13 @@ hr{border:0;border-top:1px solid #29415c;margin:15px 0}
 const STORAGE_KEY = "jp_politics_sim_working_v8";
 
 const PARTIES = [
- {
-  id:"ldp",
-  name:"自由民主党",
-  short:"自民",
-  ideology:.55,
-  color:"ldp",
+{
+ id:"ldp",
+ name:"自由民主党",
+ short:"自民",
+ houses:["衆院","参院"],
+ ideology:.55,
+ color:"ldp",
   pledges:{
    economy:78,
    taxation:58,
