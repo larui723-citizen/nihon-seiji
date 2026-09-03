@@ -3765,19 +3765,41 @@ openModal("党首選",html);
 }
 
 function leadershipVote(id){
-if(!state.leadership.active)return;
-const pp=getPlayerParty();
-let scores={};
+ if(!state.leadership.active)return;
+ const pp=getPlayerParty();
+ let scores={};
 
-state.leadership.candidates.forEach(c=>{
-const p=c.id==="player"?state.player:getPolitician(c.id);
-let score=(p?.human||50)*.25+(p?.execution||50)*.25+(p?.trust||50)*.2+(p?.ambition||50)*.1+(p?.popularity||50)*.2;
-if(c.id==="player")score+=state.personal.internalSupport;
-score+=rand(-15,15);
-scores[c.id]=score;
-});
+ state.leadership.candidates.forEach(c=>{
+  const p=c.id==="player"?state.player:getPolitician(c.id);
 
-const winner=Object.keys(scores).sort((a,b)=>scores[b]-scores[a])[0];
+  let score=
+   (p?.human||50)*.25+
+   (p?.execution||50)*.25+
+   (p?.trust||50)*.2+
+   (p?.ambition||50)*.1+
+   (p?.popularity||50)*.2;
+
+  /*
+   思想がプレイヤーに近い候補ほど有利
+   ideology:
+   -100 = リベラル寄り
+    0   = 中道
+   +100 = 保守寄り
+  */
+  const playerIdeology=state.player?.ideology||0;
+  const candidateIdeology=p?.ideology||0;
+  const ideologyDistance=Math.abs(playerIdeology-candidateIdeology);
+  const ideologyBonus=Math.max(0,30-ideologyDistance/4);
+
+  score+=ideologyBonus;
+
+  if(c.id==="player")score+=state.personal.internalSupport;
+
+  score+=rand(-15,15);
+  scores[c.id]=score;
+ });
+
+ const winner=Object.keys(scores).sort((a,b)=>scores[b]-scores[a])[0];
 
 if(winner==="player"){
  pp.leaderId="player";
@@ -5178,6 +5200,8 @@ function startExisting(){
 const name=document.getElementById("startPlayerName")?.value.trim()||"山田太郎";
 const partyId=document.getElementById("startParty")?.value||"ldp";
 const pp=state.parties[partyId];
+ const ideology=
+ Number(document.getElementById("startPlayerIdeology")?.value||0);
 
 state.started=true;
 state.player={
@@ -5189,6 +5213,8 @@ house:"衆院",
 human:68,
 popularity:42,
 execution:65,
+ideology:ideology,
+localSupport:35,
 ambition:70,
 trust:65,
 media:55,
@@ -5276,6 +5302,8 @@ house:"党代表",
 human:72,
 popularity:25,
 execution:62,
+ideology:0,
+localSupport:35,
 ambition:85,
 trust:65,
 media:60,
