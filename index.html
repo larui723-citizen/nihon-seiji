@@ -2852,7 +2852,7 @@ if(kind==="local"){
  const cost=getActivityCost("local");
  if(state.personal.activityFunds<cost){
   state.actionCount--;
-  showToast("活動資金が足りません。");
+  showToast("政治活動資金が足りません。");
   return false;
  }
  state.personal.activityFunds-=cost;
@@ -2867,7 +2867,7 @@ if(kind==="network"){
  const cost=getActivityCost("network");
  if(state.personal.activityFunds<cost){
   state.actionCount--;
-  showToast("活動資金が足りません。");
+  showToast("政治活動資金が足りません。");
   return false;
  }
  state.personal.activityFunds-=cost;
@@ -2880,7 +2880,7 @@ if(kind==="diet"){
  const cost=getActivityCost("diet");
  if(state.personal.activityFunds<cost){
   state.actionCount--;
-  showToast("活動資金が足りません。");
+  showToast("政治活動資金が足りません。");
   return false;
  }
  state.personal.activityFunds-=cost;
