@@ -1262,15 +1262,21 @@ function getCoalitionScore(partyAId,partyBId){
 
 const currentBill=makeBill(1);
 return {
-started:false,
-tab:"home",
-date:{year:2026,month:9},
-climate,
-player:null,
-parties,
-politicians,
-partyMembers,
-governmentParties:(()=>{
+ started:false,
+ tab:"home",
+ date:{year:2026,month:9},
+ dietSession:{
+  status:"closed",
+  type:"閉会中",
+  startedAt:null,
+  endsAt:null
+ },
+ climate,
+ player:null,
+ parties,
+ politicians,
+ partyMembers,
+ governmentParties:(()=>{
  const majority=Math.floor(lowerTotal/2)+1;
 
  const ranking=PARTIES
