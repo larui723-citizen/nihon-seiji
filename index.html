@@ -848,6 +848,15 @@ function fmt(n,d=1){return Number(n||0).toFixed(d)}
  function fmtYenFromMan(n){
  return Math.round(Number(n||0)*10000).toLocaleString("ja-JP")+"円";
 }
+ function getActivityCost(kind){
+ const costs={
+  media:15,
+  local:10,
+  network:8,
+  diet:5
+ };
+ return costs[kind]||0;
+}
 function party(id){return PARTIES.find(x=>x.id===id)}
 function monthText(d){return d.year+"年"+d.month+"月"}
 function isLeader(){
@@ -2822,7 +2831,7 @@ log("政策研究を行い、実行力を高めた。");
 }
 
 if(kind==="media"){
- const cost=15;
+ const cost=getActivityCost("media");
  if(state.personal.activityFunds<cost){
   state.actionCount--;
   showToast("活動資金が足りません。");
@@ -2838,7 +2847,7 @@ if(kind==="media"){
 }
 
 if(kind==="local"){
- const cost=10;
+ const cost=getActivityCost("local");
  if(state.personal.activityFunds<cost){
   state.actionCount--;
   showToast("活動資金が足りません。");
@@ -2853,7 +2862,7 @@ if(kind==="local"){
 }
 
 if(kind==="network"){
- const cost=8;
+ const cost=getActivityCost("network");
  if(state.personal.activityFunds<cost){
   state.actionCount--;
   showToast("活動資金が足りません。");
@@ -2866,7 +2875,7 @@ if(kind==="network"){
 }
 
 if(kind==="diet"){
- const cost=5;
+ const cost=getActivityCost("diet");
  if(state.personal.activityFunds<cost){
   state.actionCount--;
   showToast("活動資金が足りません。");
