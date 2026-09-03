@@ -889,14 +889,16 @@ function buildPoliticians(){
   ambition:x[9],
   trust:x[10],
   media:x[11],
+ideology:rint(-100,100),
   active:true,
   incumbent:true,
   foreign:[],
   familiarity:0,
   relation:0
+  localSupport:rint(20,70)
  }));
 
- const TARGET_POLITICIANS=1000;
+ const TARGET_POLITICIANS=800;
 
  const partyWeights={
  ldp:30,
@@ -931,18 +933,26 @@ while(arr.length<TARGET_POLITICIANS){
   partyId:ps.id,
   age:rint(25,72),
  house:ps.houses?.[0]||"衆院",
-group:"無派閥・中堅",
+group:[
+ "無派閥・中堅",
+ "政策グループ",
+ "党内保守派",
+ "党内改革派",
+ "若手グループ"
+][rint(0,4)],
   human:rint(55,84),
   popularity:rint(25,75),
   execution:rint(50,86),
   ambition:rint(40,90),
   trust:rint(50,90),
   media:rint(35,88),
-  active:true,
+ideology:rint(-100,100),
+active:true,
   incumbent:false,
   foreign:[],
-  familiarity:0,
-  relation:0
+familiarity:0,
+relation:0,
+localSupport:rint(20,70)
  });
 }
  return arr;
@@ -1533,12 +1543,17 @@ const names=["北海道","青森","岩手","宮城","秋田","山形","福島","
 "京都","大阪","兵庫","奈良","和歌山","鳥取","島根","岡山","広島","山口","徳島","香川",
 "愛媛","高知","福岡","佐賀","長崎","熊本","大分","宮崎","鹿児島","沖縄"];
 return Array.from({length:n},(_,i)=>({
-id:i+1,
-name:names[i%names.length]+" "+((i%4)+1)+"区",
-candidate:null,
-opponentParty:"ldp",
-opponent:null,
-result:null
+ id:i+1,
+ name:names[i%names.length]+" "+((i%4)+1)+"区",
+ candidate:null,
+ opponentParty:"ldp",
+ opponent:null,
+ result:null,
+
+ // 選挙区固有の政治環境
+ turnout:rint(55,75),
+ partySupport:{},
+ issueFocus:rint(0,100)
 }));
 }
 
