@@ -2910,7 +2910,7 @@ loyalty:rint(60,90)
 function autoFill(){
 state.auto.direction=document.getElementById("autoDirection")?.value||state.auto.direction;
 while(actionLeft()>0){
-spendAction(state.auto.direction);
+ if(!spendAction(state.auto.direction))break;
 }
 log("自動行動で今月の4行動を消化した。");
 saveSilently();
@@ -2963,8 +2963,10 @@ monthlyUpdate();
  }
 
  if(state.auto.enabled){
-  while(actionLeft()>0)spendAction(state.auto.direction);
+ while(actionLeft()>0){
+  if(!spendAction(state.auto.direction))break;
  }
+}
 
  saveSilently();
  render();
