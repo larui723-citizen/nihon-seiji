@@ -1824,7 +1824,7 @@ return `
 <div class="kpi cyan"><div class="label">個人・全国支持</div><div class="value">${fmt(state.personal.nationalSupport)}%</div></div>
 <div class="kpi green"><div class="label">知名度</div><div class="value">${fmt(state.personal.recognition)}%</div></div>
 <div class="kpi yellow"><div class="label">党支持率</div><div class="value">${fmt(pp?.published||0)}%</div></div>
-<div class="kpi purple"><div class="label">活動資金</div><div class="value">${fmtYenFromMan(state.personal.activityFunds)}</div></div>
+<div class="kpi purple"><div class="label">政治活動資金</div><div class="value">${fmtYenFromMan(state.personal.activityFunds)}</div></div>
 </div>
 </div>
 
@@ -2918,7 +2918,7 @@ if(kind==="fund"){
  state.personal.activityFunds+=raised;
 
  log(
-  `政治資金を${fmtYenFromMan(raised)}集めた。`
+  `政治活動資金を${fmtYenFromMan(raised)}集めた。`
  );
 }
 
