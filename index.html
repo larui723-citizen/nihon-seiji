@@ -1614,6 +1614,26 @@ function normalizeState(){
  if(!state.cabinet)state.cabinet={};
  if(!state.election)state.election={lower:{districts:makeDistricts(12),pr:[]},upper:{districts:makeDistricts(8),pr:[]}};
  if(!state.auto)state.auto={enabled:false,direction:"policy"};
+ // 旧セーブデータとの互換性
+state.politicians.forEach(p=>{
+ if(typeof p.ideology!=="number"){
+  p.ideology=rint(-100,100);
+ }
+
+ if(typeof p.localSupport!=="number"){
+  p.localSupport=rint(20,70);
+ }
+});
+
+if(state.player){
+ if(typeof state.player.ideology!=="number"){
+  state.player.ideology=0;
+ }
+
+ if(typeof state.player.localSupport!=="number"){
+  state.player.localSupport=35;
+ }
+}
 
  if(!state.dietSession){
   state.dietSession={
@@ -1741,7 +1761,17 @@ app.innerHTML=`
 <label>あなたの政治家名</label>
 <input id="startPlayerName" value="山田太郎">
 </div>
-
+<div class="field" style="margin-top:10px">
+<label>あなたの政治思想</label>
+<select id="startPlayerIdeology">
+<option value="-80">かなりリベラル</option>
+<option value="-40">リベラル</option>
+<option value="0" selected>中道</option>
+<option value="40">保守</option>
+<option value="80">かなり保守</option>
+</select>
+<div class="muted">-100 = リベラル、0 = 中道、+100 = 保守</div>
+</div>
 <div class="party-select-grid">
 ${PARTIES.map((p,i)=>`
 <button type="button" class="party-option ${i===0?"selected":""}" data-action="chooseStartParty" data-party="${p.id}">
@@ -1773,6 +1803,17 @@ ${PARTIES.map((p,i)=>`
 <div class="field" style="margin-top:10px">
 <label>党の哲学・基本方針</label>
 <textarea id="newPartyPhilosophy">中道を軸に、経済成長と社会保障改革を両立する。</textarea>
+</div>
+<div class="field" style="margin-top:10px">
+<label>あなたの政治思想・新党の立ち位置</label>
+<select id="newPartyIdeology">
+<option value="-80">かなりリベラル</option>
+<option value="-40">リベラル</option>
+<option value="0" selected>中道</option>
+<option value="40">保守</option>
+<option value="80">かなり保守</option>
+</select>
+<div class="muted">あなたの思想が、そのまま新党の基本的な政治的位置になります。</div>
 </div>
 <div class="actions">
 <button type="button" class="primary" data-action="startNewParty">新党を結成して開始</button>
@@ -1970,6 +2011,18 @@ return `
 <div class="statline">
 <div class="stat"><b>${p.trust}</b><span>信頼性</span></div>
 <div class="stat"><b>${p.media}</b><span>メディア力</span></div>
+</div>
+
+<div class="statline">
+<div class="stat">
+<b>${p.ideology??0}</b>
+<span>政治思想</span>
+</div>
+
+<div class="stat">
+<b>${p.localSupport??0}</b>
+<span>地元支持</span>
+</div>
 </div>
 </div>`;
 }
@@ -5265,11 +5318,12 @@ function startNewParty(){
 const partyName=document.getElementById("newPartyName")?.value.trim()||"日本改革党";
 const playerName=document.getElementById("newPlayerName")?.value.trim()||"山田太郎";
 const philosophy=document.getElementById("newPartyPhilosophy")?.value.trim()||"改革";
+const ideology=Number(document.getElementById("newPartyIdeology")?.value||0);
 
 const id="newparty_"+Date.now();
 state.parties[id]={
 id,name:partyName,short:partyName.slice(0,5),
-ideology:0,support:1.2,published:1.2,
+ideology:ideology/100,support:1.2,published:1.2,
 color:"green",
 lowerSeats:0,upperSeats:0,
 leaderId:"player",
@@ -5302,7 +5356,7 @@ house:"党代表",
 human:72,
 popularity:25,
 execution:62,
-ideology:0,
+ideology:ideology,
 localSupport:35,
 ambition:85,
 trust:65,
