@@ -1006,8 +1006,12 @@ function createInitialPartyScores(){
  return scores;
 }
 
-function allocateInitialSeats(total,scores){
- const list=PARTIES.map(p=>({
+function allocateInitialSeats(total,scores,house){
+ const eligible=PARTIES.filter(p=>
+  p.houses?.includes(house)
+ );
+
+ const list=eligible.map(p=>({
   id:p.id,
   raw:scores[p.id]
  }));
@@ -1045,9 +1049,9 @@ const initialPartyScores=createInitialPartyScores();
 const initialLowerSeats=
  allocateInitialSeats(
   lowerTotal,
-  initialPartyScores
+  initialPartyScores,
+  "衆院"
  );
-
 const initialUpperSeats=
  allocateInitialSeats(
   upperTotal,
@@ -1057,7 +1061,8 @@ const initialUpperSeats=
     initialPartyScores[p.id]*
     rand(.90,1.10)
    ])
-  )
+  ),
+  "参院"
  );
 
 initialLowerSeats.forEach(x=>{
