@@ -859,6 +859,31 @@ function fmt(n,d=1){return Number(n||0).toFixed(d)}
 }
 function party(id){return PARTIES.find(x=>x.id===id)}
 function monthText(d){return d.year+"年"+d.month+"月"}
+ // 政党ごとの政治思想の中心値
+// -100 = 強くリベラル、0 = 中道、+100 = 強く保守
+const PARTY_IDEOLOGY_CENTER={
+ ldp:45,
+ ishin:25,
+ cra:-40,
+ dpfp:10,
+ sanseito:70,
+ mirai:-15,
+ jcp:-75,
+ reiwa:-55,
+ sdp:-65,
+ hoshu:80,
+ komeito:0
+};
+ function generatePoliticianIdeology(partyId){
+ const center=PARTY_IDEOLOGY_CENTER[partyId]??0;
+
+ // 政党の思想を中心に、政治家ごとの個人差を付ける
+ return clamp(
+  center+rint(-25,25),
+  -100,
+  100
+ );
+}
 function isLeader(){
 return !!state.player &&
 state.parties[state.player.partyId] &&
@@ -889,7 +914,7 @@ function buildPoliticians(){
   ambition:x[9],
   trust:x[10],
   media:x[11],
-ideology:rint(-100,100),
+ideology:generatePoliticianIdeology(x[2]),
   active:true,
   incumbent:true,
   foreign:[],
@@ -946,7 +971,7 @@ group:[
   ambition:rint(40,90),
   trust:rint(50,90),
   media:rint(35,88),
-ideology:rint(-100,100),
+ideology:generatePoliticianIdeology(ps.id),
 active:true,
   incumbent:false,
   foreign:[],
