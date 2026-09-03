@@ -1074,12 +1074,16 @@ initialUpperSeats.forEach(x=>{
 });
 // 現在設定されている政党議席を基準に比例配分する
 function allocateSeats(total,house){
- const partyList=PARTIES.map(p=>({
+ const eligible=PARTIES.filter(p=>
+  p.houses?.includes(house)
+ );
+
+ const partyList=eligible.map(p=>({
   id:p.id,
   base:house==="衆院"
    ? parties[p.id].lowerSeats
    : parties[p.id].upperSeats
- }));
+  }));
 
  const baseTotal=partyList.reduce((sum,p)=>sum+p.base,0);
 
