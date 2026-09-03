@@ -139,9 +139,9 @@ margin:5px 0 12px;
 }
 .section-title h2{margin:0;font-size:18px}
 .kpis{
-display:grid;
-grid-template-columns:repeat(4,1fr);
-gap:9px;
+ display:grid;
+ grid-template-columns:repeat(5,1fr);
+ gap:9px;
 }
 .kpi{
 padding:12px;
@@ -1826,6 +1826,7 @@ return `
 <div class="kpi green"><div class="label">知名度</div><div class="value">${fmt(state.personal.recognition)}%</div></div>
 <div class="kpi yellow"><div class="label">党支持率</div><div class="value">${fmt(pp?.published||0)}%</div></div>
 <div class="kpi purple"><div class="label">政治活動資金</div><div class="value">${fmtYenFromMan(state.personal.activityFunds)}</div></div>
+<div class="kpi orange"><div class="label">選挙資金</div><div class="value">${fmtYenFromMan(state.personal.electionFunds)}</div></div>
 </div>
 </div>
 
