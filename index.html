@@ -1573,21 +1573,33 @@ return false;
 
 function normalizeState(){
  if(!state.economy)state.economy={};
-if(typeof state.economy.netMigration!=="number")state.economy.netMigration=180000;   
-    if(typeof state.economy.workingAgePopulation!=="number")state.economy.workingAgePopulation=73.0;
-state.actionMax=4;
-state.actionCount=clamp(Number(state.actionCount)||0,0,4);
-if(!state.tab)state.tab="home";
-if(!state.partyMembers)state.partyMembers={};
-if(!state.logs)state.logs=[];
-if(!state.news)state.news=[];
-if(!state.relations)state.relations={};
-if(!state.foreignRelations)state.foreignRelations={};
-if(!state.cabinet)state.cabinet={};
-if(!state.election)state.election={lower:{districts:makeDistricts(12),pr:[]},upper:{districts:makeDistricts(8),pr:[]}};
-if(!state.auto)state.auto={enabled:false,direction:"policy"};
-}
+ if(typeof state.economy.netMigration!=="number")state.economy.netMigration=180000;
+ if(typeof state.economy.workingAgePopulation!=="number")state.economy.workingAgePopulation=73.0;
+ state.actionMax=4;
+ state.actionCount=clamp(Number(state.actionCount)||0,0,4);
+ if(!state.tab)state.tab="home";
+ if(!state.partyMembers)state.partyMembers={};
+ if(!state.logs)state.logs=[];
+ if(!state.news)state.news=[];
+ if(!state.relations)state.relations={};
+ if(!state.foreignRelations)state.foreignRelations={};
+ if(!state.cabinet)state.cabinet={};
+ if(!state.election)state.election={lower:{districts:makeDistricts(12),pr:[]},upper:{districts:makeDistricts(8),pr:[]}};
+ if(!state.auto)state.auto={enabled:false,direction:"policy"};
 
+ if(!state.dietSession){
+  state.dietSession={
+   status:"closed",
+   type:"閉会中",
+   sessionNumber:0,
+   startDate:null,
+   endDate:null,
+   extensionCount:0,
+   maxExtensions:0,
+   extendedEndDate:null
+  };
+ }
+}
 function log(msg){
 state.logs.unshift(monthText(state.date)+"： "+msg);
 state.logs=state.logs.slice(0,40);
@@ -2875,14 +2887,16 @@ function nextMonth(){
   return;
  }
 
- state.date.month++;
- if(state.date.month>12){
-  state.date.month=1;
-  state.date.year++;
- }
- state.actionCount=0;
+state.date.month++;
+if(state.date.month>12){
+ state.date.month=1;
+ state.date.year++;
+}
 
- monthlyUpdate();
+state.actionCount=0;
+
+updateDietSession();
+monthlyUpdate();
 
  if(
   scheduled &&
@@ -3391,7 +3405,64 @@ function getPolicyDomainPressures(){
  };
 
 }
+function updateDietSession(){
+ const month=state.date.month;
 
+ // 特別会・緊急集会など、条件によって発生する国会は
+ // 今後ここより優先して処理する。
+ if(
+  state.dietSession?.type==="特別会" ||
+  state.dietSession?.type==="緊急集会"
+ ){
+  return;
+ }
+
+ let type="閉会中";
+ let status="closed";
+
+ if(month>=1 && month<=6){
+  type="常会";
+  status="open";
+ }else if(month>=10 && month<=12){
+  type="臨時会";
+  status="open";
+ }
+
+ const previousType=state.dietSession?.type;
+
+ state.dietSession.status=status;
+ state.dietSession.type=type;
+
+ if(status==="open"){
+  if(
+   previousType!=="常会" &&
+   previousType!=="臨時会"
+  ){
+   state.dietSession.sessionNumber++;
+   state.dietSession.startDate={
+    year:state.date.year,
+    month:state.date.month
+   };
+   state.dietSession.extensionCount=0;
+   state.dietSession.maxExtensions=
+    type==="常会"?1:2;
+   state.dietSession.extendedEndDate=null;
+   log(
+    type==="常会"
+     ? "通常国会が召集された。"
+     : "臨時国会が召集された。"
+   );
+  }
+ }else{
+  if(previousType!=="閉会中"){
+   state.dietSession.endDate={
+    year:state.date.year,
+    month:state.date.month
+   };
+   log("国会が閉会した。");
+  }
+ }
+}
 function monthlyUpdate(){
  const e=state.economy;
 e.nikkei+=rint(-900,1100);
