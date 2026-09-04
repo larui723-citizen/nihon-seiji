@@ -850,10 +850,12 @@ function fmt(n,d=1){return Number(n||0).toFixed(d)}
 }
  function getActivityCost(kind){
  const costs={
-  media:15,
+  policy:10,
+  media:5,
   local:10,
-  network:8,
-  diet:5
+  network:3,
+  diet:10,
+  fund:5
  };
  return costs[kind]||0;
 }
@@ -1353,6 +1355,11 @@ return {
  maxExtensions:0,
  extendedEndDate:null
 },
+ diet:{
+ committees:createDietCommittees(),
+ assignments:{},
+ playerCommittee:null
+},
  climate,
  player:null,
  parties,
@@ -1423,7 +1430,7 @@ for(const partner of partners){
   : [lead.id];
 })(),
 actionCount:0,
-actionMax:4,
+actionMax:200,
 logs:["ゲーム開始準備完了。"],
 news:[
 {id:"n1",type:"politics",title:"臨時国会に向け各党が政策調整",text:"ゲーム内シナリオ。各党が国会対応と次期選挙を見据えた協議を始めた。"},
@@ -1592,7 +1599,300 @@ modal:null,
 savedAt:null
 };
 }
+/* =========================================================
+   国会・委員会
+   ========================================================= */
 
+const DIET_COMMITTEE_TYPES=[
+ {
+  id:"cabinet",
+  name:"内閣委員会",
+  field:"行政・政治"
+ },
+ {
+  id:"internal",
+  name:"総務委員会",
+  field:"地方・通信・行政"
+ },
+ {
+  id:"foreign",
+  name:"外交委員会",
+  field:"外交"
+ },
+ {
+  id:"finance",
+  name:"財政金融委員会",
+  field:"財政・金融"
+ },
+ {
+  id:"education",
+  name:"文教科学委員会",
+  field:"教育・科学"
+ },
+ {
+  id:"health",
+  name:"厚生労働委員会",
+  field:"社会保障・労働"
+ },
+ {
+  id:"agriculture",
+  name:"農林水産委員会",
+  field:"農林水産"
+ },
+ {
+  id:"economy",
+  name:"経済産業委員会",
+  field:"経済・産業"
+ },
+ {
+  id:"land",
+  name:"国土交通委員会",
+  field:"交通・インフラ"
+ },
+ {
+  id:"environment",
+  name:"環境委員会",
+  field:"環境"
+ },
+ {
+  id:"judicial",
+  name:"法務委員会",
+  field:"司法・法務"
+ },
+ {
+  id:"security",
+  name:"安全保障委員会",
+  field:"防衛・安全保障"
+ },
+ {
+  id:"budget",
+  name:"予算委員会",
+  field:"予算・政府全般"
+ },
+ {
+  id:"rules",
+  name:"議院運営委員会",
+  field:"国会運営"
+ },
+ {
+  id:"audit",
+  name:"決算行政監視委員会",
+  field:"決算・行政監視"
+ },
+ {
+  id:"constitutional",
+  name:"憲法審査会",
+  field:"憲法"
+ },
+ {
+  id:"discipline",
+  name:"懲罰委員会",
+  field:"議員規律"
+ }
+];
+
+function createDietCommittees(){
+ return {
+  lower:DIET_COMMITTEE_TYPES.map(c=>({
+   id:c.id,
+   name:c.name,
+   field:c.field,
+   house:"衆院",
+   chairId:null,
+   members:[],
+   bills:[],
+   workload:0
+  })),
+  upper:DIET_COMMITTEE_TYPES.map(c=>({
+   id:c.id,
+   name:c.name,
+   field:c.field,
+   house:"参院",
+   chairId:null,
+   members:[],
+   bills:[],
+   workload:0
+  }))
+ };
+}
+
+function getCommittee(house,id){
+ const list=state.diet?.committees?.[house==="衆院"?"lower":"upper"]||[];
+ return list.find(c=>c.id===id)||null;
+}
+ function committeeAbilityScore(p,committee){
+ const field=committee.field;
+
+ let score=50;
+
+ if(field.includes("外交")){
+  score+=Number(p.media||0)*.10;
+  score+=Number(p.trust||0)*.15;
+ }
+
+ if(field.includes("財政") || field.includes("予算") || field.includes("金融")){
+  score+=Number(p.execution||0)*.25;
+  score+=Number(p.human||0)*.10;
+ }
+
+ if(field.includes("教育")){
+  score+=Number(p.human||0)*.15;
+  score+=Number(p.execution||0)*.10;
+ }
+
+ if(field.includes("社会保障") || field.includes("労働")){
+  score+=Number(p.human||0)*.20;
+  score+=Number(p.trust||0)*.10;
+ }
+
+ if(field.includes("経済") || field.includes("産業")){
+  score+=Number(p.execution||0)*.20;
+  score+=Number(p.ambition||0)*.10;
+ }
+
+ if(field.includes("防衛") || field.includes("安全保障")){
+  score+=Number(p.trust||0)*.20;
+  score+=Number(p.execution||0)*.15;
+ }
+
+ if(field.includes("法務") || field.includes("司法")){
+  score+=Number(p.execution||0)*.20;
+  score+=Number(p.trust||0)*.15;
+ }
+
+ if(field.includes("行政") || field.includes("政治")){
+  score+=Number(p.human||0)*.15;
+  score+=Number(p.execution||0)*.15;
+ }
+
+ if(field.includes("憲法")){
+  score+=Number(p.execution||0)*.10;
+  score+=Number(p.trust||0)*.10;
+  score+=Number(p.ideology||0)*.05;
+ }
+
+ return score+rand(-10,10);
+}
+
+function assignDietCommittees(){
+ if(!state.diet){
+  state.diet={
+   committees:createDietCommittees(),
+   assignments:{},
+   playerCommittee:null
+  };
+ }
+
+ state.diet.committees=createDietCommittees();
+ state.diet.assignments={};
+ state.diet.playerCommittee=null;
+
+ const houses=[
+  {key:"lower",name:"衆院"},
+  {key:"upper",name:"参院"}
+ ];
+
+ houses.forEach(h=>{
+  const politicians=state.politicians.filter(p=>
+   p.active!==false &&
+   p.house===h.name
+  );
+
+  const committees=state.diet.committees[h.key];
+
+  const used={};
+
+  committees.forEach(c=>{
+   used[c.id]=new Set();
+  });
+
+  politicians
+   .sort((a,b)=>
+    (Number(b.execution||0)+Number(b.trust||0)+Number(b.human||0))-
+    (Number(a.execution||0)+Number(a.trust||0)+Number(a.human||0))
+   )
+   .forEach(p=>{
+    let best=null;
+    let bestScore=-Infinity;
+
+    committees.forEach(c=>{
+     const members=used[c.id];
+
+     if(members.has(p.id))return;
+
+     const score=
+      committeeAbilityScore(p,c)-
+      members.size*1.5;
+
+     if(score>bestScore){
+      bestScore=score;
+      best=c;
+     }
+    });
+
+    if(!best)return;
+
+    used[best.id].add(p.id);
+    best.members.push(p.id);
+    state.diet.assignments[p.id]=best.id;
+   });
+
+  committees.forEach(c=>{
+   if(!c.members.length)return;
+
+   const candidates=c.members
+    .map(id=>getPolitician(id))
+    .filter(Boolean)
+    .sort((a,b)=>{
+     const sa=
+      Number(a.execution||0)+
+      Number(a.trust||0)+
+      Number(a.human||0);
+
+     const sb=
+      Number(b.execution||0)+
+      Number(b.trust||0)+
+      Number(b.human||0);
+
+     return sb-sa;
+    });
+
+   if(candidates.length){
+    c.chairId=candidates[0].id;
+   }
+  });
+ });
+
+ const player=state.player;
+
+ if(player && (player.house==="衆院" || player.house==="参院")){
+  const key=player.house==="衆院"?"lower":"upper";
+  const committees=state.diet.committees[key];
+
+  let best=null;
+  let bestScore=-Infinity;
+
+  committees.forEach(c=>{
+   const score=committeeAbilityScore(player,c);
+
+   if(score>bestScore){
+    bestScore=score;
+    best=c;
+   }
+  });
+
+  if(best){
+   best.members=best.members.filter(id=>id!=="player");
+
+   if(!best.members.includes("player")){
+    best.members.push("player");
+   }
+
+   state.diet.assignments.player=best.id;
+   state.diet.playerCommittee=best.id;
+  }
+ }
+}
 function makeDistricts(n){
 const names=["北海道","青森","岩手","宮城","秋田","山形","福島","茨城","栃木","群馬","埼玉","千葉",
 "東京","神奈川","新潟","富山","石川","福井","長野","岐阜","静岡","愛知","三重","滋賀",
@@ -1659,8 +1959,8 @@ function normalizeState(){
  if(!state.economy)state.economy={};
  if(typeof state.economy.netMigration!=="number")state.economy.netMigration=180000;
  if(typeof state.economy.workingAgePopulation!=="number")state.economy.workingAgePopulation=73.0;
- state.actionMax=4;
- state.actionCount=clamp(Number(state.actionCount)||0,0,4);
+ state.actionMax=200;
+state.actionCount=clamp(Number(state.actionCount)||0,0,200);
  if(!state.tab)state.tab="home";
  if(!state.partyMembers)state.partyMembers={};
  if(!state.logs)state.logs=[];
@@ -1670,6 +1970,25 @@ function normalizeState(){
  if(!state.cabinet)state.cabinet={};
  if(!state.election)state.election={lower:{districts:makeDistricts(12),pr:[]},upper:{districts:makeDistricts(8),pr:[]}};
  if(!state.auto)state.auto={enabled:false,direction:"policy"};
+ if(!state.diet){
+ state.diet={
+  committees:createDietCommittees(),
+  assignments:{},
+  playerCommittee:null
+ };
+}
+
+if(!state.diet.committees){
+ state.diet.committees=createDietCommittees();
+}
+
+if(!state.diet.assignments){
+ state.diet.assignments={};
+}
+
+if(!state.diet.playerCommittee){
+ assignDietCommittees();
+}
  // 旧セーブデータとの互換性
 state.politicians.forEach(p=>{
  if(typeof p.ideology!=="number"){
@@ -1703,6 +2022,22 @@ if(state.player){
    extendedEndDate:null
   };
  }
+ if(!state.diet){
+ state.diet={
+  committees:createDietCommittees(),
+  assignments:{},
+  playerCommittee:null
+ };
+}
+if(!state.diet.committees){
+ state.diet.committees=createDietCommittees();
+}
+if(!state.diet.assignments){
+ state.diet.assignments={};
+}
+if(!state.diet.playerCommittee){
+ assignDietCommittees();
+}
 }
 function log(msg){
 state.logs.unshift(monthText(state.date)+"： "+msg);
@@ -1762,7 +2097,7 @@ app.innerHTML=`
       </span>`
    : ""
  }
- <span class="badge yellow">行動 ${state.actionCount}/4</span>
+ <span class="badge yellow">今月の政治活動時間 ${actionLeft()}/${state.actionMax}時間</span>
  <span class="badge green">${esc(getPlayerParty()?.short||"無所属")}</span>
  ${isLeader()?'<span class="badge purple">党首</span>':""}
  ${isPM()?'<span class="badge red">総理</span>':""}
@@ -1943,7 +2278,7 @@ return `
 </div>
 
 <div class="col8 card">
-<div class="section-title"><h2>今月の行動</h2><span class="muted">1か月4行動</span></div>
+<div class="section-title"><h2>今月の政治活動</h2><span class="muted">1か月200時間</span></div>
 <div class="actions">
 <button type="button" class="primary" data-action="personalAction" data-kind="policy">政策を研究する</button>
 <button type="button" data-action="personalAction" data-kind="media">メディア出演</button>
@@ -1968,7 +2303,7 @@ return `
 </div>
 <div class="actions">
 <button type="button" class="purple-btn" data-action="setAuto">自動行動方針を設定</button>
-<button type="button" data-action="autoFill">残り4行動を自動消化</button>
+<button type="button" data-action="autoFill">残り時間を自動消化</button>
 <button type="button" class="yellow-btn" data-action="nextMonth">翌月へ進む</button>
 </div>
 </div>
@@ -3109,7 +3444,7 @@ return `
 <div class="col6 card">
 <h2>ゲーム情報</h2>
 <div class="row"><span>現在</span><b>${monthText(state.date)}</b></div>
-<div class="row"><span>行動</span><b>${state.actionCount}/4</b></div>
+<div class="row"><span>政治活動時間</span><b>${actionLeft()}/${state.actionMax}時間</b></div>
 <div class="row"><span>政治家数</span><b>${state.politicians.length}</b></div>
 <div class="row"><span>保存</span><b>${state.savedAt?"あり":"未保存"}</b></div>
 <div class="actions"><button type="button" data-action="diagnose">ボタン・画面診断</button></div>
@@ -3122,116 +3457,110 @@ return `
 ========================================================= */
 
 function spendAction(kind){
-if(actionLeft()<=0){
-showToast("今月の4行動を使い切っています。");
-return false;
-}
+ const timeCost=getActivityCost(kind);
 
-state.actionCount++;
-
-if(kind==="policy"){
-state.player.execution=clamp(state.player.execution+2,0,100);
-state.personal.nationalSupport+=.5;
-log("政策研究を行い、実行力を高めた。");
-}
-
-if(kind==="media"){
- const cost=getActivityCost("media");
- if(state.personal.activityFunds<cost){
-  state.actionCount--;
-  showToast("政治活動資金が足りません。");
+ if(actionLeft()<timeCost){
+  showToast(`今月の時間が足りません。必要${timeCost}時間、残り${actionLeft()}時間です。`);
   return false;
  }
- state.personal.activityFunds-=cost;
- state.personal.recognition+=2.5;
- state.personal.nationalSupport+=1.1;
- getPlayerParty().support+=.6;
- growPartyMembership(2);
- addNews("personal","メディア出演で注目度上昇","あなたの発言がニュースで取り上げられ、知名度と支持が上昇した。");
- log(`メディア出演。政治活動資金を${fmtYenFromMan(cost)}使用した。`);
-}
 
-if(kind==="local"){
- const cost=getActivityCost("local");
- if(state.personal.activityFunds<cost){
-  state.actionCount--;
-  showToast("政治活動資金が足りません。");
-  return false;
+ if(["media","local","network","diet"].includes(kind)){
+  const activityCost=getActivityCost(kind);
+  if(state.personal.activityFunds<activityCost){
+   showToast("政治活動資金が足りません。");
+   return false;
+  }
  }
- state.personal.activityFunds-=cost;
- state.personal.localSupport+=2;
- state.personal.nationalSupport+=.7;
- state.player.human=clamp(state.player.human+1,0,100);
- growPartyMembership(1);
- log(`地元活動を行い、政治活動資金を${fmtYenFromMan(cost)}使用した。`);
-}
 
-if(kind==="network"){
- const cost=getActivityCost("network");
- if(state.personal.activityFunds<cost){
-  state.actionCount--;
-  showToast("政治活動資金が足りません。");
-  return false;
+ state.actionCount+=timeCost;
+
+ if(kind==="policy"){
+  state.player.execution=clamp(state.player.execution+2,0,100);
+  state.personal.nationalSupport+=.5;
+  log(`政策研究を行い、実行力を高めた。政治活動時間を${timeCost}時間使用した。`);
  }
- state.personal.activityFunds-=cost;
- state.player.human=clamp(state.player.human+1,0,100);
- state.personal.internalSupport+=1.2;
- log(`政治家との交流を行い、政治活動資金を${fmtYenFromMan(cost)}使用した。`);
-}
 
-if(kind==="diet"){
- const cost=getActivityCost("diet");
- if(state.personal.activityFunds<cost){
-  state.actionCount--;
-  showToast("政治活動資金が足りません。");
-  return false;
+ if(kind==="media"){
+  const cost=getActivityCost("media");
+  state.personal.activityFunds-=cost;
+  state.personal.recognition+=2.5;
+  state.personal.nationalSupport+=1.1;
+  getPlayerParty().support+=.6;
+  growPartyMembership(2);
+  addNews(
+   "personal",
+   "メディア出演で注目度上昇",
+   "あなたの発言がニュースで取り上げられ、知名度と支持が上昇した。"
+  );
+  log(`メディア出演。政治活動時間を${timeCost}時間、政治活動資金を${fmtYenFromMan(cost)}使用した。`);
  }
- state.personal.activityFunds-=cost;
- state.player.execution=clamp(state.player.execution+1,0,100);
- state.personal.nationalSupport+=.4;
- log(`国会活動を行い、政治活動資金を${fmtYenFromMan(cost)}使用した。`);
+
+ if(kind==="local"){
+  const cost=getActivityCost("local");
+  state.personal.activityFunds-=cost;
+  state.personal.localSupport+=2;
+  state.personal.nationalSupport+=.7;
+  state.player.human=clamp(state.player.human+1,0,100);
+  growPartyMembership(1);
+  log(`地元活動を行い、政治活動時間を${timeCost}時間、政治活動資金を${fmtYenFromMan(cost)}使用した。`);
+ }
+
+ if(kind==="network"){
+  const cost=getActivityCost("network");
+  state.personal.activityFunds-=cost;
+  state.player.human=clamp(state.player.human+1,0,100);
+  state.personal.internalSupport+=1.2;
+  log(`政治家との交流を行い、政治活動時間を${timeCost}時間、政治活動資金を${fmtYenFromMan(cost)}使用した。`);
+ }
+
+ if(kind==="diet"){
+  const cost=getActivityCost("diet");
+  state.personal.activityFunds-=cost;
+  state.player.execution=clamp(state.player.execution+1,0,100);
+  state.personal.nationalSupport+=.4;
+  log(`国会活動を行い、政治活動時間を${timeCost}時間、政治活動資金を${fmtYenFromMan(cost)}使用した。`);
+ }
+
+ if(kind==="fund"){
+  const fundraisingPower=Number(state.personal.fundraising||0);
+  const supportBase=Number(state.personal.nationalSupport||0);
+  const localBase=Number(state.personal.localSupport||0);
+
+  const baseAmount=8;
+  const powerBonus=fundraisingPower*0.35;
+  const supportBonus=supportBase*0.08;
+  const localBonus=localBase*0.05;
+  const randomBonus=rint(0,8);
+
+  const raised=Math.max(
+   1,
+   Math.round(
+    baseAmount+
+    powerBonus+
+    supportBonus+
+    localBonus+
+    randomBonus
+   )
+  );
+
+  state.personal.fundraising=clamp(
+   fundraisingPower+1.5,
+   0,
+   100
+  );
+
+  state.personal.activityFunds+=raised;
+
+  log(
+   `政治活動資金を${fmtYenFromMan(raised)}集めた。政治活動時間を${timeCost}時間使用した。`
+  );
+ }
+
+ state.personal.nationalSupport=clamp(state.personal.nationalSupport,0,100);
+ state.personal.recognition=clamp(state.personal.recognition,0,100);
+
+ return true;
 }
-
-if(kind==="fund"){
- const fundraisingPower=Number(state.personal.fundraising||0);
- const supportBase=Number(state.personal.nationalSupport||0);
- const localBase=Number(state.personal.localSupport||0);
-
- const baseAmount=8;
- const powerBonus=fundraisingPower*0.35;
- const supportBonus=supportBase*0.08;
- const localBonus=localBase*0.05;
- const randomBonus=rint(0,8);
-
- const raised=Math.max(
-  1,
-  Math.round(
-   baseAmount+
-   powerBonus+
-   supportBonus+
-   localBonus+
-   randomBonus
-  )
- );
-
- state.personal.fundraising=clamp(
-  fundraisingPower+1.5,
-  0,
-  100
- );
-
- state.personal.activityFunds+=raised;
-
- log(
-  `政治活動資金を${fmtYenFromMan(raised)}集めた。`
- );
-}
-
-state.personal.nationalSupport=clamp(state.personal.nationalSupport,0,100);
-state.personal.recognition=clamp(state.personal.recognition,0,100);
-return true;
-}
-
 function growPartyMembership(n){
 const pp=getPlayerParty();
 if(!state.partyMembers[pp.id])state.partyMembers[pp.id]=[];
@@ -3255,17 +3584,13 @@ state.auto.direction=document.getElementById("autoDirection")?.value||state.auto
 while(actionLeft()>0){
  if(!spendAction(state.auto.direction))break;
 }
-log("自動行動で今月の4行動を消化した。");
+log(`自動行動で今月の政治活動時間を消化した。残り${actionLeft()}時間。`);
 saveSilently();
 render();
-showToast("自動行動完了。4行動を消化しました。");
+showToast(`自動行動完了。残り${actionLeft()}時間です。`);
 }
 
 function nextMonth(){
- if(actionLeft()>0){
-  showToast("先に残りの行動を使ってください。自動消化もできます。");
-  return;
- }
 
  const scheduled=state.leadership.scheduledElection;
 
@@ -3289,6 +3614,22 @@ if(state.date.month>12){
 state.actionCount=0;
 
 updateDietSession();
+
+assignDietCommittees();
+
+const dietTime=getDietTimeCost();
+
+state.actionCount=
+ clamp(
+  dietTime,
+  0,
+  state.actionMax
+ );
+
+log(
+ `国会日程により${dietTime}時間が拘束された。`
+);
+
 monthlyUpdate();
 
  if(
@@ -5783,6 +6124,7 @@ relation:0
 
 state.personal.internalSupport=8;
 state.personal.nationalSupport=8;
+ assignDietCommittees();
 
 state.leadership.termStart={
  year:state.date.year,
