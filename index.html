@@ -2201,13 +2201,17 @@ function renderParty(){
   ?'<div class="actions"><button type="button" class="primary" data-action="appointOfficers">幹事長・役員を任命</button></div>'
   :'<div class="muted">党首になると任命できます。</div>'}
 
-  <hr>
+ <hr>
 
-  <div class="actions">
-   <button type="button" class="red-btn" data-action="leaveAndFormNewParty">
-    離党して新党を結成
-   </button>
-  </div>
+<div class="actions">
+ <button type="button" class="red-btn" data-action="leaveAndFormNewParty">
+  離党して新党を結成
+ </button>
+
+ <button type="button" data-action="transferToAnotherParty">
+  別の政党へ移籍する
+ </button>
+</div>
 
    <div class="col6 card">
   <div class="section-title">
@@ -2363,7 +2367,27 @@ function renderParty(){
  })()}
 </div>
 
- </div>`;
+  <hr>
+
+  <div class="card" style="margin-top:16px">
+   <h3>党籍・再編</h3>
+   <div class="muted" style="margin-bottom:12px">
+    現在の党を離れて、別の政党への移籍を申し込むことができます。
+   </div>
+
+   <div class="actions">
+    <button
+     type="button"
+     class="red-btn"
+     data-action="transferToAnotherParty"
+    >
+     別党へ移籍する
+    </button>
+   </div>
+  </div>
+
+  </div>`;
+
 }
 
 function officerRow(label,key,pp){
@@ -5791,6 +5815,229 @@ function generatePartyMemberNames(count=5){
   pledgeTexts
  };
 }
+ function confirmTransferToAnotherParty(){
+ const currentParty=getPlayerParty();
+ const targetId=
+  document.getElementById("transferTargetParty")?.value;
+
+ const targetParty=state.parties?.[targetId];
+
+ if(!currentParty || !state.player){
+  showToast("現在の所属政党を確認できません。");
+  return;
+ }
+
+ if(!targetParty){
+  showToast("移籍先の政党を確認できません。");
+  return;
+ }
+
+ if(targetParty.id===currentParty.id){
+  showToast("現在と同じ政党には移籍できません。");
+  return;
+ }
+
+ const player=state.player;
+
+ /* --------------------------------
+    受け入れ判定
+    ランダム要素は±3だけ
+    -------------------------------- */
+
+ const currentIdeology=Number(currentParty.ideology||0);
+ const targetIdeology=Number(targetParty.ideology||0);
+
+ // 思想の近さ：最大35点
+ const ideologyScore=
+  35*(1-Math.min(
+   1,
+   Math.abs(currentIdeology-targetIdeology)/2
+  ));
+
+ // 関係値：最大25点
+ const relation=getRelation(targetParty.leaderId||targetParty.id);
+ const trust=Number(relation?.trust||50);
+ const respect=Number(relation?.respect||50);
+
+ const relationScore=
+  clamp(
+   ((trust*0.6)+(respect*0.4))*0.25,
+   0,
+   25
+  );
+
+ // プレイヤー人気：最大20点
+ const popularity=
+  Number(
+   player.popularity ??
+   state.personal?.nationalSupport ??
+   state.personal?.recognition ??
+   50
+  );
+
+ const popularityScore=
+  clamp(popularity*0.20,0,20);
+
+ // 信頼：最大15点
+ const trustScore=
+  clamp(trust*0.15,0,15);
+
+ // 小さなランダム要素：±3
+ const randomScore=
+  Math.floor(Math.random()*7)-3;
+
+ const score=Math.round(
+  ideologyScore+
+  relationScore+
+  popularityScore+
+  trustScore+
+  randomScore
+ );
+
+ const finalScore=clamp(score,0,100);
+
+ let resultText="";
+ let accepted=false;
+
+ if(finalScore>=80){
+  accepted=true;
+  resultText="移籍先政党はあなたを強く歓迎しています。";
+ }else if(finalScore>=65){
+  accepted=true;
+  resultText="移籍先政党はあなたの加入を前向きに受け入れています。";
+ }else if(finalScore>=45){
+  accepted=Math.random()<0.5;
+  resultText=
+   accepted
+    ?"党内で協議した結果、受け入れが決まりました。"
+    :"党内で協議した結果、今回は受け入れを見送ることになりました。";
+ }else if(finalScore>=30){
+  accepted=false;
+  resultText="移籍先政党はあなたの加入に慎重です。";
+ }else{
+  accepted=false;
+  resultText="移籍先政党はあなたの加入を受け入れませんでした。";
+ }
+
+ closeModal();
+
+ openModal(
+  accepted ? "移籍承認" : "移籍拒否",
+  `
+  <div class="card">
+   <h3>${esc(targetParty.name)}</h3>
+
+   <div class="section-title">
+    <b>受け入れ判定</b>
+    <span class="badge ${accepted?"green":"red"}">
+     ${accepted?"承認":"拒否"}
+    </span>
+   </div>
+
+   <div style="font-size:28px;font-weight:700;margin:12px 0">
+    ${finalScore}点
+   </div>
+
+   <p>${esc(resultText)}</p>
+
+   ${
+    accepted
+     ? `
+      <div class="muted">
+       「移籍を確定する」を押すと、
+       現在の政党を離党して
+       ${esc(targetParty.name)}へ移籍します。
+      </div>
+
+      <div class="actions" style="margin-top:16px">
+       <button
+        type="button"
+        class="primary"
+        data-action="executeTransferToAnotherParty"
+        data-party="${esc(targetParty.id)}">
+        移籍を確定する
+       </button>
+
+       <button type="button" data-action="closeModal">
+        キャンセル
+       </button>
+      </div>
+     `
+     : `
+      <div class="muted">
+       今回の移籍申請は成立しませんでした。
+       現在の政党に残ります。
+      </div>
+
+      <div class="actions" style="margin-top:16px">
+       <button type="button" data-action="closeModal">
+        閉じる
+       </button>
+      </div>
+     `
+   }
+  </div>
+  `
+ );
+}
+ function transferToAnotherParty(){
+ const currentParty=getPlayerParty();
+
+ if(!currentParty || !state.player){
+  showToast("現在の所属政党を確認できません。");
+  return;
+ }
+
+ const parties=Object.values(state.parties||{})
+  .filter(p=>p && p.id!==currentParty.id);
+
+ if(!parties.length){
+  showToast("移籍できる政党がありません。");
+  return;
+ }
+
+ openModal(
+  "別の政党へ移籍",
+  `
+  <p>
+   現在の所属政党
+   <b>${esc(currentParty.name)}</b>
+   を離党し、別の政党への移籍を申請します。
+  </p>
+
+  <div class="field">
+   <label>移籍先の政党</label>
+   <select id="transferTargetParty">
+    ${parties.map(p=>`
+     <option value="${p.id}">
+      ${esc(p.name)}
+     </option>
+    `).join("")}
+   </select>
+  </div>
+
+  <div class="card" style="margin-top:12px">
+   <div class="muted">
+    移籍は即時成立しません。<br>
+    移籍先政党の受け入れ判定を行い、承認された場合のみ移籍します。
+   </div>
+  </div>
+
+  <div class="actions" style="margin-top:16px">
+   <button
+    type="button"
+    class="primary"
+    data-action="confirmTransferToAnotherParty">
+    移籍を申請する
+   </button>
+
+   <button type="button" data-action="closeModal">
+    キャンセル
+   </button>
+  </div>
+  `
+ );
+}
  function leaveAndFormNewParty(){
  const oldParty=getPlayerParty();
 
@@ -6362,6 +6609,14 @@ if(a==="saveOfficers"){saveOfficers();return}
 }
  if(a==="confirmLeaveAndFormNewParty"){
  confirmLeaveAndFormNewParty();
+ return;
+}
+ if(a==="transferToAnotherParty"){
+ transferToAnotherParty();
+ return;
+}
+ if(a==="confirmTransferToAnotherParty"){
+ confirmTransferToAnotherParty();
  return;
 }
 if(a==="promotePerson"){promotePerson(b.dataset.id);return}
