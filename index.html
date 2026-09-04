@@ -857,7 +857,11 @@ function fmt(n,d=1){return Number(n||0).toFixed(d)}
  };
  return costs[kind]||0;
 }
-function party(id){return PARTIES.find(x=>x.id===id)}
+function party(id){
+ return PARTIES.find(x=>x.id===id)
+  || state?.parties?.[id]
+  || null;
+}
 function monthText(d){return d.year+"年"+d.month+"月"}
  // 政党ごとの政治思想の中心値
 // -100 = 強くリベラル、0 = 中道、+100 = 強く保守
@@ -1991,34 +1995,89 @@ ${state.news.filter(n=>n.type==="politics").slice(0,3).map(newsCard).join("")}
 }
 
 function renderPeople(){
-const tab=state.selectedPeopleTab||"all";
-let list=state.politicians.filter(p=>p.active);
-if(tab!=="all")list=list.filter(p=>p.partyId===tab);
+ const tab=state.selectedPeopleTab||"all";
 
-return `
-<div class="grid">
-<div class="col12 card gradient">
-<div class="section-title">
-<div><h2>政治家名鑑</h2><div class="muted">${list.length}人を表示中。カードを押すと詳細が開きます。</div></div>
-<span class="badge purple">政治家は独立したデータとして行動可能</span>
-</div>
-<div class="tabs2">
-<button type="button" data-action="peopleTab" data-people="all" class="${tab==="all"?"active":""}">全員</button>
-${PARTIES.map(p=>`<button type="button" data-action="peopleTab" data-people="${p.id}" class="${tab===p.id?"active":""}">${p.short}</button>`).join("")}
-</div>
-</div>
+ const allParties=Object.values(state.parties||{});
 
-<div class="col12">
-<div class="grid">
-${list.slice(0,120).map(personCard).join("")}
-</div>
-<div class="muted" style="margin-top:10px">
-全${list.length}人中、現在は最大120人を表示しています。
-</div>
-</div>
-</div>`;
+ let list=state.politicians.filter(p=>p.active);
+
+ if(tab!=="all"){
+  list=list.filter(p=>p.partyId===tab);
+ }
+const ordinaryMembers=
+ tab!=="all"
+  ? (state.partyMembers?.[tab]||[])
+  : Object.values(state.partyMembers||{}).flat();
+
+const ordinaryCards=ordinaryMembers.map(m=>({
+ id:m.id,
+ name:m.name,
+ partyId:m.partyId,
+ age:m.age,
+ house:"党員",
+ group:m.role||"一般党員",
+ human:50,
+ popularity:m.support||0,
+ execution:50,
+ ambition:60,
+ trust:m.loyalty||50,
+ media:m.recognition||0,
+ ideology:party(m.partyId)?.ideology
+   ? Math.round(party(m.partyId).ideology*100)
+   : 0,
+ localSupport:m.support||0,
+ active:true,
+ ordinaryMember:true
+}));
+ return `
+ <div class="grid">
+
+ <div class="col12 card gradient">
+ <div class="section-title">
+ <div>
+ <h2>政治家名鑑</h2>
+ <div class="muted">${list.length}人を表示中。カードを押すと詳細が開きます。</div>
+ </div>
+ <span class="badge purple">政治家・党首・党員を確認できます</span>
+ </div>
+
+ <div class="tabs2">
+ <button
+  type="button"
+  data-action="peopleTab"
+  data-people="all"
+  class="${tab==="all"?"active":""}">
+  全員
+ </button>
+
+ ${allParties.map(p=>`
+ <button
+  type="button"
+  data-action="peopleTab"
+  data-people="${p.id}"
+  class="${tab===p.id?"active":""}">
+  ${esc(p.short||p.name)}
+ </button>
+ `).join("")}
+
+ </div>
+ </div>
+
+ <div class="col12">
+ <div class="grid">
+
+ ${list.slice(0,120).map(personCard).join("")}
+${ordinaryCards.slice(0,20).map(personCard).join("")}
+
+ </div>
+
+ <div class="muted" style="margin-top:10px">
+ 全${list.length}人中、現在は最大120人を表示しています。
+ </div>
+
+ </div>
+ </div>`;
 }
-
 function personCard(p){
 const pt=party(p.partyId);
 return `
@@ -2480,7 +2539,46 @@ id:m.id,name:m.name,house:"党員",popularity:m.support,execution:50,
 human:50,ambition:60,trust:m.loyalty,media:m.recognition
 })));
 }
+function getCandidatePerson(id){
+ if(id==="player"){
+  return state.player;
+ }
 
+ const politician=getPolitician(id);
+ if(politician){
+  return politician;
+ }
+
+ for(const arr of Object.values(state.partyMembers||{})){
+  const member=arr.find(x=>x.id===id);
+
+  if(member){
+   return {
+    ...member,
+    human:50,
+    execution:50,
+    ambition:60,
+    trust:member.loyalty||50,
+    popularity:member.support||0,
+    media:member.recognition||0,
+    ideology:
+     party(member.partyId)?.ideology
+      ? Math.round(party(member.partyId).ideology*100)
+      : 0
+   };
+  }
+ }
+
+ return null;
+}
+ function findPartyMember(id){
+ for(const arr of Object.values(state.partyMembers||{})){
+  const member=arr.find(x=>x.id===id);
+  if(member)return member;
+ }
+
+ return null;
+}
 function candidateName(id){
 const p=getPolitician(id);
 if(p)return p.name;
@@ -3725,16 +3823,42 @@ function leadershipPrepare(){
   });
  }
 
- const others=state.politicians
- .filter(p=>p.partyId===pp.id && p.id!==state.player.id && p.active)
- .sort((a,b)=>b.ambition-a.ambition)
- .slice(0,3);
+ const politicianCandidates=state.politicians
+  .filter(p=>p.partyId===pp.id && p.id!=="player" && p.active)
+  .sort((a,b)=>b.ambition-a.ambition)
+  .slice(0,3);
 
- others.forEach(p=>{
+ politicianCandidates.forEach(p=>{
   state.leadership.candidates.push({
    id:p.id,
    name:p.name,
    views:makeViews(p)
+  });
+ });
+
+ const ordinaryCandidates=(state.partyMembers?.[pp.id]||[])
+  .filter(m=>m.id!=="player")
+  .sort((a,b)=>
+   ((b.loyalty||50)+(b.support||0)+(b.recognition||0))
+   -
+   ((a.loyalty||50)+(a.support||0)+(a.recognition||0))
+  )
+  .slice(
+   0,
+   Math.max(0,3-state.leadership.candidates.length+(state.leadership.candidacyDecision===true?0:1))
+  );
+
+ ordinaryCandidates.forEach(m=>{
+  state.leadership.candidates.push({
+   id:m.id,
+   name:m.name,
+   views:makeViews({
+    execution:50,
+    ambition:60,
+    human:50,
+    trust:m.loyalty||50,
+    media:m.recognition||0
+   })
   });
  });
 
@@ -3848,7 +3972,7 @@ function leadershipVote(id){
  let scores={};
 
  state.leadership.candidates.forEach(c=>{
-  const p=c.id==="player"?state.player:getPolitician(c.id);
+  const p=getCandidatePerson(c.id);
 
   let score=
    (p?.human||50)*.25+
@@ -3910,6 +4034,39 @@ log("党首選に勝利し、あなたが党首になった。");
  showToast("党首選に勝利しました！");
 }else{
  pp.leaderId=winner;
+
+ const member=findPartyMember(winner);
+
+ if(member){
+  member.role="党首";
+ }
+
+ state.leadership.termStart={
+  year:state.date.year,
+  month:state.date.month
+ };
+
+ state.leadership.termEnd={
+  year:state.date.year+3,
+  month:state.date.month
+ };
+
+ state.leadership.scheduledElection={
+  year:state.date.year+3,
+  month:state.date.month
+ };
+
+ state.leadership.emergency=false;
+ state.leadership.emergencyReason=null;
+ state.leadership.active=false;
+ state.leadership.candidacyDecision=null;
+
+ log("党首選で"+candidateName(winner)+"が勝利した。");
+
+ closeModal();
+ render();
+ showToast("党首選は"+candidateName(winner)+"が勝利しました。");
+}
 
  state.leadership.termStart={
   year:state.date.year,
@@ -4120,7 +4277,55 @@ function prRemove(type,index){
 state.election[type].pr.splice(Number(index),1);
 render();
 }
+function promoteCandidateToPolitician(id){
+ const existing=state.politicians.find(p=>p.id===id);
 
+ if(existing){
+  existing.active=true;
+  existing.incumbent=true;
+  return existing;
+ }
+
+ const member=findPartyMember(id);
+
+ if(!member){
+  if(id==="player"){
+   state.player.house="衆院";
+   return state.player;
+  }
+
+  return null;
+ }
+
+ const p={
+  id:member.id,
+  name:member.name,
+  partyId:member.partyId,
+  age:member.age,
+  house:"衆院",
+  group:member.role||"新人",
+  human:50,
+  popularity:member.support||20,
+  execution:50,
+  ambition:60,
+  trust:member.loyalty||50,
+  media:member.recognition||10,
+  ideology:
+   party(member.partyId)?.ideology
+    ? Math.round(party(member.partyId).ideology*100)
+    : 0,
+  active:true,
+  incumbent:true,
+  foreign:[],
+  familiarity:0,
+  relation:0,
+  localSupport:member.support||20
+ };
+
+ state.politicians.push(p);
+
+ return p;
+}
 function runElection(type){
 if(!isLeader()){
 showToast("選挙を正式に指揮できるのは党首です。");
@@ -4136,13 +4341,15 @@ if(!d.candidate){
 d.result="未配置";
 return;
 }
-const c=state.politicians.find(p=>p.id===d.candidate);
+const c=getCandidatePerson(d.candidate);
 const strength=(c?.popularity||40)*.45+(c?.human||50)*.25+(c?.execution||50)*.2+(state.personal.nationalSupport)*.1;
 const enemy=state.politicians.find(p=>p.id===d.opponent);
 const enemyStrength=(enemy?.popularity||40)*.45+(enemy?.human||50)*.25+(enemy?.execution||50)*.2+rand(0,20);
 if(strength+rand(-15,15)>enemyStrength){
 d.result="勝利";
 wins++;
+
+promoteCandidateToPolitician(d.candidate);
 }else{
 d.result="敗北";
 }
