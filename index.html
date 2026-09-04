@@ -5844,29 +5844,77 @@ function generatePartyMemberNames(count=5){
     ランダム要素は±3だけ
     -------------------------------- */
 
- const currentIdeology=Number(currentParty.ideology||0);
- const targetIdeology=Number(targetParty.ideology||0);
+ const currentIdeology=
+  Number(currentParty.ideology||0)*100;
 
- // 思想の近さ：最大35点
+ const targetIdeology=
+  Number(targetParty.ideology||0)*100;
+
+ /* 思想の近さ：最大30点 */
  const ideologyScore=
-  35*(1-Math.min(
+  30*(1-Math.min(
    1,
-   Math.abs(currentIdeology-targetIdeology)/2
+   Math.abs(currentIdeology-targetIdeology)/200
   ));
 
- // 関係値：最大25点
- const relation=getRelation(targetParty.leaderId||targetParty.id);
- const trust=Number(relation?.trust||50);
- const respect=Number(relation?.respect||50);
+ /* 政策の近さ：最大25点 */
+ const pledgeKeys=[
+  "economy",
+  "taxation",
+  "welfare",
+  "education",
+  "childcare",
+  "diplomacy",
+  "defense",
+  "energy",
+  "environment",
+  "constitutionalReform"
+ ];
 
- const relationScore=
+ let pledgeDifference=0;
+ let pledgeCount=0;
+
+ pledgeKeys.forEach(key=>{
+  const a=Number(currentParty.pledges?.[key]??50);
+  const b=Number(targetParty.pledges?.[key]??50);
+
+  pledgeDifference+=Math.abs(a-b);
+  pledgeCount++;
+ });
+
+ const averagePledgeDifference=
+  pledgeCount
+   ? pledgeDifference/pledgeCount
+   : 50;
+
+ const policyScore=
   clamp(
-   ((trust*0.6)+(respect*0.4))*0.25,
+   25*(1-averagePledgeDifference/100),
    0,
    25
   );
 
- // プレイヤー人気：最大20点
+ /* 移籍先政党との人間関係：最大20点 */
+ const relationId=
+  targetParty.leaderId || targetParty.id;
+
+ const relation=
+  getRelation(relationId);
+
+ const relationTrust=
+  Number(relation?.trust||50);
+
+ const relationRespect=
+  Number(relation?.respect||50);
+
+ const relationScore=
+  clamp(
+   ((relationTrust*0.6)+(relationRespect*0.4))*0.20,
+   0,
+   20
+  );
+
+ /* プレイヤー人気：最大15点 */
  const popularity=
   Number(
    player.popularity ??
@@ -5876,18 +5924,26 @@ function generatePartyMemberNames(count=5){
   );
 
  const popularityScore=
-  clamp(popularity*0.20,0,20);
+  clamp(popularity*0.15,0,15);
 
- // 信頼：最大15点
+ /* プレイヤーの信頼：最大10点 */
+ const playerTrust=
+  Number(
+   player.trust ??
+   state.personal?.trust ??
+   50
+  );
+
  const trustScore=
-  clamp(trust*0.15,0,15);
+  clamp(playerTrust*0.10,0,10);
 
- // 小さなランダム要素：±3
+ /* ランダム要素は±3だけ */
  const randomScore=
   Math.floor(Math.random()*7)-3;
 
  const score=Math.round(
   ideologyScore+
+  policyScore+
   relationScore+
   popularityScore+
   trustScore+
@@ -5896,27 +5952,41 @@ function generatePartyMemberNames(count=5){
 
  const finalScore=clamp(score,0,100);
 
- let resultText="";
- let accepted=false;
+ /*
+  * 受け入れ判定
+  *
+  * 75以上：強く歓迎
+  * 60～74：受け入れ
+  * 55～59：慎重に受け入れ
+  * 54以下：拒否
+  *
+  * 追加の50%抽選は行わない。
+  * ランダム要素は±3だけ。
+  */
 
- if(finalScore>=80){
+ let accepted=false;
+ let resultText="";
+
+ if(finalScore>=75){
   accepted=true;
-  resultText="移籍先政党はあなたを強く歓迎しています。";
- }else if(finalScore>=65){
-  accepted=true;
-  resultText="移籍先政党はあなたの加入を前向きに受け入れています。";
- }else if(finalScore>=45){
-  accepted=Math.random()<0.5;
   resultText=
-   accepted
-    ?"党内で協議した結果、受け入れが決まりました。"
-    :"党内で協議した結果、今回は受け入れを見送ることになりました。";
- }else if(finalScore>=30){
+   "移籍先政党はあなたを強く歓迎しています。";
+ }else if(finalScore>=60){
+  accepted=true;
+  resultText=
+   "移籍先政党はあなたの加入を前向きに受け入れています。";
+ }else if(finalScore>=55){
+  accepted=true;
+  resultText=
+   "党内で協議した結果、慎重ながら受け入れが決まりました。";
+ }else if(finalScore>=40){
   accepted=false;
-  resultText="移籍先政党はあなたの加入に慎重です。";
+  resultText=
+   "党内で協議した結果、今回は受け入れを見送ることになりました。";
  }else{
   accepted=false;
-  resultText="移籍先政党はあなたの加入を受け入れませんでした。";
+  resultText=
+   "移籍先政党はあなたの加入を受け入れませんでした。";
  }
 
  closeModal();
@@ -5936,6 +6006,15 @@ function generatePartyMemberNames(count=5){
 
    <div style="font-size:28px;font-weight:700;margin:12px 0">
     ${finalScore}点
+   </div>
+
+   <div class="muted" style="margin-bottom:12px">
+    思想 ${Math.round(ideologyScore)}点 /
+    政策 ${Math.round(policyScore)}点 /
+    関係 ${Math.round(relationScore)}点 /
+    人気 ${Math.round(popularityScore)}点 /
+    信頼 ${Math.round(trustScore)}点 /
+    変動 ${randomScore>=0?"+":""}${randomScore}点
    </div>
 
    <p>${esc(resultText)}</p>
@@ -5978,6 +6057,167 @@ function generatePartyMemberNames(count=5){
    }
   </div>
   `
+ );
+}
+ function executeTransferToAnotherParty(targetId){
+ const currentParty=getPlayerParty();
+ const targetParty=state.parties?.[targetId];
+
+ if(!currentParty || !state.player){
+  showToast("現在の所属政党を確認できません。");
+  return;
+ }
+
+ if(!targetParty){
+  showToast("移籍先政党を確認できません。");
+  return;
+ }
+
+ if(currentParty.id===targetParty.id){
+  showToast("現在と同じ政党には移籍できません。");
+  return;
+ }
+
+ const player=state.player;
+
+ /* --------------------------------
+    現在の政党からプレイヤーを外す
+    -------------------------------- */
+
+ currentParty.members=
+  (currentParty.members||[])
+   .filter(id=>id!=="player");
+
+ /* --------------------------------
+    プレイヤーの議席を現在の政党から外す
+    -------------------------------- */
+
+ if(player.house==="衆院"){
+  currentParty.lowerSeats=
+   Math.max(
+    0,
+    Number(currentParty.lowerSeats||0)-1
+   );
+ }
+
+ if(player.house==="参院"){
+  currentParty.upperSeats=
+   Math.max(
+    0,
+    Number(currentParty.upperSeats||0)-1
+   );
+ }
+
+ /* --------------------------------
+    プレイヤーが旧党首だった場合
+    新しい党首を選ぶ
+    -------------------------------- */
+
+ if(currentParty.leaderId==="player"){
+
+  const replacement=
+   state.politicians
+    .filter(p=>
+     p.partyId===currentParty.id &&
+     p.id!=="player" &&
+     p.active
+    )
+    .sort((a,b)=>
+     ((b.popularity||0)+(b.ambition||0))-
+     ((a.popularity||0)+(a.ambition||0))
+    )[0];
+
+  currentParty.leaderId=
+   replacement?.id||null;
+
+  if(replacement){
+   replacement.internalTitle="党首";
+  }
+ }
+
+ /* --------------------------------
+    移籍先政党へプレイヤーを追加
+    -------------------------------- */
+
+ if(!Array.isArray(targetParty.members)){
+  targetParty.members=[];
+ }
+
+ if(!targetParty.members.includes("player")){
+  targetParty.members.push("player");
+ }
+
+ /* --------------------------------
+    議席を移籍先へ移す
+    -------------------------------- */
+
+ if(player.house==="衆院"){
+  targetParty.lowerSeats=
+   Number(targetParty.lowerSeats||0)+1;
+ }
+
+ if(player.house==="参院"){
+  targetParty.upperSeats=
+   Number(targetParty.upperSeats||0)+1;
+ }
+
+ /* --------------------------------
+    プレイヤー本人の所属政党を変更
+    -------------------------------- */
+
+ player.partyId=targetParty.id;
+
+ /*
+  * 移籍先では一般議員として加入する。
+  * 党首にはならない。
+  */
+ player.internalTitle="議員";
+
+ /* --------------------------------
+    state.politicians側も同期
+    -------------------------------- */
+
+ const playerPolitician=
+  state.politicians.find(
+   p=>p.id==="player"
+  );
+
+ if(playerPolitician){
+  playerPolitician.partyId=targetParty.id;
+  playerPolitician.internalTitle="議員";
+ }
+
+ /* --------------------------------
+    移籍記録
+    -------------------------------- */
+
+ log(
+  currentParty.name+
+  "を離党し、"+
+  targetParty.name+
+  "へ移籍した。"
+ );
+
+ addNews(
+  "politics",
+  "議員移籍",
+  player.name+
+  "が"+
+  currentParty.name+
+  "を離党し、"+
+  targetParty.name+
+  "へ移籍した。"
+ );
+
+ saveSilently();
+
+ closeModal();
+
+ render();
+
+ showToast(
+  targetParty.name+
+  "への移籍が成立しました。"
  );
 }
  function transferToAnotherParty(){
@@ -6617,6 +6857,10 @@ if(a==="saveOfficers"){saveOfficers();return}
 }
  if(a==="confirmTransferToAnotherParty"){
  confirmTransferToAnotherParty();
+ return;
+}
+ if(a==="executeTransferToAnotherParty"){
+ executeTransferToAnotherParty(b.dataset.party);
  return;
 }
 if(a==="promotePerson"){promotePerson(b.dataset.id);return}
