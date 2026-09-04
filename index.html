@@ -7447,19 +7447,7 @@ pending.splitMembers
   state.parties[newId].members.push(p.id);
  });
 
-   const p=
-    state.politicians.find(
-     politician=>politician.id===x.id
-    );
-
-   if(!p)return;
-
-   p.partyId=newId;
-   p.internalTitle="議員";
-
-   state.parties[newId].members.push(p.id);
-
-  });
+ 
 
  /*
   * 元政党から分裂参加者を削除
