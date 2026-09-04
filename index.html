@@ -2197,10 +2197,17 @@ function renderParty(){
  ${officerRow("選挙責任者","election",pp)}
  ${officerRow("広報責任者","media",pp)}
 
- ${isLeader()
- ?'<div class="actions"><button type="button" class="primary" data-action="appointOfficers">幹事長・役員を任命</button></div>'
- :'<div class="muted">党首になると任命できます。</div>'}
- </div>
+   ${isLeader()
+  ?'<div class="actions"><button type="button" class="primary" data-action="appointOfficers">幹事長・役員を任命</button></div>'
+  :'<div class="muted">党首になると任命できます。</div>'}
+
+  <hr>
+
+  <div class="actions">
+   <button type="button" class="red-btn" data-action="leaveAndFormNewParty">
+    離党して新党を結成
+   </button>
+  </div>
 
    <div class="col6 card">
   <div class="section-title">
@@ -3840,7 +3847,10 @@ function leadershipPrepare(){
  state.leadership.active=true;
  state.leadership.candidates=[];
 
- if(state.leadership.candidacyDecision===true){
+ if(
+ state.leadership.candidacyDecision===true ||
+ pp.leaderId==="player"
+){
   state.leadership.candidates.push({
    id:"player",
    name:state.player.name,
@@ -5781,6 +5791,345 @@ function generatePartyMemberNames(count=5){
   pledgeTexts
  };
 }
+ function leaveAndFormNewParty(){
+ const oldParty=getPlayerParty();
+
+ if(!oldParty || !state.player){
+  showToast("現在の所属政党を確認できません。");
+  return;
+ }
+
+ const playerSeat=
+  state.player.house==="衆院"
+   ? "lowerSeats"
+   : state.player.house==="参院"
+     ? "upperSeats"
+     : null;
+
+ const currentSeats=
+  playerSeat
+   ? Number(oldParty[playerSeat]||0)
+   : 0;
+
+ openModal(
+  "離党して新党を結成",
+  `
+  <p>
+   現在の所属政党
+   <b>${esc(oldParty.name)}</b>
+   を離党し、新しい政党を結成します。
+  </p>
+
+  <div class="card" style="margin:12px 0">
+   <div class="section-title">
+    <b>議席の扱い</b>
+    <span class="badge cyan">${currentSeats>0?"議席あり":"議席なし"}</span>
+   </div>
+
+   <div class="muted">
+    ${
+     currentSeats>0
+      ? "あなたが保有している"+
+        (state.player.house==="衆院"?"衆院":"参院")+
+        "議席1を新党へ移します。"
+      : "現在あなた自身の国会議席はありません。新党は議席0から始まります。"
+    }
+   </div>
+  </div>
+
+  <div class="field">
+   <label>新党名</label>
+   <input id="leaveNewPartyName" value="日本改革党">
+  </div>
+
+  <div class="field" style="margin-top:10px">
+   <label>新党の哲学・基本方針</label>
+   <textarea id="leaveNewPartyPhilosophy">中道を軸に、経済成長と社会保障改革を両立する。</textarea>
+  </div>
+
+  <div class="field" style="margin-top:10px">
+   <label>新党の政治的位置</label>
+   <select id="leaveNewPartyIdeology">
+    <option value="-80">かなりリベラル</option>
+    <option value="-40">リベラル</option>
+    <option value="0" selected>中道</option>
+    <option value="40">保守</option>
+    <option value="80">かなり保守</option>
+   </select>
+  </div>
+
+  <div class="actions" style="margin-top:16px">
+   <button type="button"
+    class="red-btn"
+    data-action="confirmLeaveAndFormNewParty">
+    離党して新党を結成する
+   </button>
+
+   <button type="button"
+    data-action="closeModal">
+    キャンセル
+   </button>
+  </div>
+  `
+ );
+}
+ function confirmLeaveAndFormNewParty(){
+ const oldParty=getPlayerParty();
+
+ if(!oldParty || !state.player){
+  showToast("現在の所属政党を確認できません。");
+  return;
+ }
+
+ const partyName=
+  document.getElementById("leaveNewPartyName")?.value.trim()
+  ||"日本改革党";
+
+ const philosophy=
+  document.getElementById("leaveNewPartyPhilosophy")?.value.trim()
+  ||"改革";
+
+ const ideology=
+  Number(
+   document.getElementById("leaveNewPartyIdeology")?.value||0
+  );
+
+ if(!partyName){
+  showToast("新党名を入力してください。");
+  return;
+ }
+
+ const newId="newparty_"+Date.now();
+
+ const initialPledges=
+  buildInitialPartyPledges(
+   philosophy,
+   ideology
+  );
+
+ /*
+  * プレイヤー自身の議席だけを新党へ移す。
+  * 複数議員が同行する仕組みは次の⑥後半で実装する。
+  */
+ const transferredLower=
+  state.player.house==="衆院"
+   ? Math.min(1,Number(oldParty.lowerSeats||0))
+   : 0;
+
+ const transferredUpper=
+  state.player.house==="参院"
+   ? Math.min(1,Number(oldParty.upperSeats||0))
+   : 0;
+
+ /*
+  * 元の党からプレイヤーを離脱させる
+  */
+ oldParty.members=
+  (oldParty.members||[])
+   .filter(id=>id!=="player");
+
+ oldParty.lowerSeats=
+  Math.max(
+   0,
+   Number(oldParty.lowerSeats||0)-transferredLower
+  );
+
+ oldParty.upperSeats=
+  Math.max(
+   0,
+   Number(oldParty.upperSeats||0)-transferredUpper
+  );
+
+ /*
+  * プレイヤーが元党の党首だった場合、
+  * 元党には別の党首候補を立てる。
+  */
+ if(oldParty.leaderId==="player"){
+
+  const replacement=
+   state.politicians
+    .filter(p=>
+     p.partyId===oldParty.id &&
+     p.id!=="player" &&
+     p.active
+    )
+    .sort((a,b)=>
+     (b.popularity+b.ambition)-
+     (a.popularity+a.ambition)
+    )[0];
+
+  oldParty.leaderId=
+   replacement?.id||null;
+
+  if(replacement){
+   replacement.internalTitle="党首";
+  }
+ }
+
+ /*
+  * 新党を作成
+  */
+ state.parties[newId]={
+  id:newId,
+  name:partyName,
+  short:partyName.slice(0,5),
+
+  ideology:ideology/100,
+
+  support:1.2,
+  published:1.2,
+
+  color:"green",
+
+  lowerSeats:transferredLower,
+  upperSeats:transferredUpper,
+
+  leaderId:"player",
+
+  philosophy,
+
+  pledges:initialPledges.pledges,
+  pledgeTexts:initialPledges.pledgeTexts,
+
+  pledgeDynamics:{
+   pressure:0,
+   lastChanged:null,
+   lastReason:"離党・新党結成時の初期公約",
+   previousSupport:1.2,
+   history:[]
+  },
+
+  members:["player"],
+
+  officers:{
+   secretaryGeneral:null,
+   policy:null,
+   election:null,
+   media:null
+  }
+ };
+
+ /*
+  * 新党の一般党員5人
+  */
+ state.partyMembers[newId]=[];
+
+ const memberNames=
+  generatePartyMemberNames(5);
+
+ for(let i=0;i<5;i++){
+  state.partyMembers[newId].push({
+   id:"m_"+newId+"_"+i,
+   name:memberNames[i],
+   partyId:newId,
+   age:rint(25,55),
+   recognition:rint(8,18),
+   support:rint(5,15),
+   role:"一般党員",
+   loyalty:rint(70,90),
+   ideology:clamp(
+    ideology+rint(-15,15),
+    -80,
+    80
+   )
+  });
+ }
+
+ /*
+  * プレイヤーの所属政党を変更
+  */
+ state.player.partyId=newId;
+ state.player.internalTitle="党首";
+
+ /*
+  * 既存政党から開始したプレイヤーは
+  * state.politiciansにも存在するので、
+  * その政治家データも新党へ移す。
+  */
+ const playerPolitician=
+  state.politicians.find(
+   p=>p.id==="player"
+  );
+
+ if(playerPolitician){
+  playerPolitician.partyId=newId;
+  playerPolitician.internalTitle="党首";
+ }
+
+ /*
+  * 新党の党首任期を3年間設定
+  */
+ state.leadership.termStart={
+  year:state.date.year,
+  month:state.date.month
+ };
+
+ state.leadership.termEnd={
+  year:state.date.year+3,
+  month:state.date.month
+ };
+
+ state.leadership.scheduledElection={
+  year:state.date.year+3,
+  month:state.date.month
+ };
+
+ state.leadership.active=false;
+ state.leadership.candidates=[];
+ state.leadership.candidacyDecision=null;
+ state.leadership.emergency=false;
+ state.leadership.emergencyReason=null;
+
+ /*
+  * 新党の支持率計算用データ
+  */
+ state.parties[newId].support=1.2;
+ state.parties[newId].published=1.2;
+
+ state.selectedPledgeParty=newId;
+ state.tab="party";
+
+ closeModal();
+
+ log(
+  oldParty.name+
+  "を離党し、新党「"+
+  partyName+
+  "」を結成した。"
+ );
+
+ if(transferredLower>0){
+  log(
+   "あなたの衆院議席1を新党へ移した。"
+  );
+ }
+
+ if(transferredUpper>0){
+  log(
+   "あなたの参院議席1を新党へ移した。"
+  );
+ }
+
+ addNews(
+  "politics",
+  "新党が結成された",
+  oldParty.name+
+  "を離党した"+
+  state.player.name+
+  "が新党「"+
+  partyName+
+  "」を結成した。"
+ );
+
+ saveSilently();
+ render();
+
+ showToast(
+  "離党して「"+
+  partyName+
+  "」を結成しました。"
+ );
+}
 function startNewParty(){
 const partyName=document.getElementById("newPartyName")?.value.trim()||"日本改革党";
 const playerName=document.getElementById("newPlayerName")?.value.trim()||"山田太郎";
@@ -6007,6 +6356,14 @@ if(a==="member"){openMember(b.dataset.id);return}
 
 if(a==="appointOfficers"){appointOfficers();return}
 if(a==="saveOfficers"){saveOfficers();return}
+ if(a==="leaveAndFormNewParty"){
+ leaveAndFormNewParty();
+ return;
+}
+ if(a==="confirmLeaveAndFormNewParty"){
+ confirmLeaveAndFormNewParty();
+ return;
+}
 if(a==="promotePerson"){promotePerson(b.dataset.id);return}
 if(a==="memberMeet"){memberMeet(b.dataset.id);return}
 if(a==="memberPromote"){memberPromote(b.dataset.id);return}
