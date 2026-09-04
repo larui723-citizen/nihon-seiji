@@ -1206,8 +1206,35 @@ politicians.forEach(p=>{
 });
 
 PARTIES.forEach(p=>{
-parties[p.id].leaderId =
-politicians.find(x=>x.partyId===p.id && x.popularity>=70)?.id || null;
+ const partyPoliticians=
+  politicians.filter(x=>
+   x.partyId===p.id &&
+   x.active
+  );
+
+ const leader=
+  partyPoliticians
+   .slice()
+   .sort((a,b)=>{
+    const scoreA=
+     Number(a.popularity||0)+
+     Number(a.human||0)+
+     Number(a.ambition||0);
+
+    const scoreB=
+     Number(b.popularity||0)+
+     Number(b.human||0)+
+     Number(b.ambition||0);
+
+    return scoreB-scoreA;
+   })[0];
+
+ parties[p.id].leaderId=
+  leader?.id||null;
+
+ if(leader){
+  leader.internalTitle="党首";
+ }
 });
 
 const raw={};
@@ -2414,8 +2441,21 @@ function officerRow(label,key,pp){
 
 function renderDiet(){
 const bill=state.bill;
-const lower=PARTIES.reduce((a,p)=>a+(state.parties[p.id].lowerSeats||0),0);
-const upper=PARTIES.reduce((a,p)=>a+(state.parties[p.id].upperSeats||0),0);
+const activeParties=
+ Object.values(state.parties||{})
+  .filter(p=>p);
+
+const lower=
+ activeParties.reduce(
+  (a,p)=>a+Number(p.lowerSeats||0),
+  0
+ );
+
+const upper=
+ activeParties.reduce(
+  (a,p)=>a+Number(p.upperSeats||0),
+  0
+ );
 return `
 <div class="grid">
 <div class="col4 card">
@@ -2423,10 +2463,15 @@ return `
 <div class="row"><span>衆議院</span><b>${lower}</b></div>
 <div class="row"><span>参議院</span><b>${upper}</b></div>
 <hr>
-${PARTIES.filter(p=>(state.parties[p.id].lowerSeats+state.parties[p.id].upperSeats)>0).map(p=>`
+${activeParties
+ .filter(p=>
+  Number(p.lowerSeats||0)+
+  Number(p.upperSeats||0)>0
+ )
+ .map(p=>`
 <div style="margin-bottom:8px">
-<div class="row"><span>${p.short}</span><b>${state.parties[p.id].lowerSeats+state.parties[p.id].upperSeats}</b></div>
-<div class="bar"><span style="width:${clamp((state.parties[p.id].lowerSeats+state.parties[p.id].upperSeats)/465*100,1,100)}%"></span></div>
+<div class="row"><span>${esc(p.short||p.name)}</span><b>${Number(p.lowerSeats||0)+Number(p.upperSeats||0)}</b></div>
+<div class="bar"><span style="width:${clamp((Number(p.lowerSeats||0)+Number(p.upperSeats||0))/465*100,1,100)}%"></span></div>
 </div>`).join("")}
 </div>
 
@@ -4606,6 +4651,80 @@ render();
 役員・党員
 ========================================================= */
 
+ function rebuildPartyLeadership(partyId){
+ const pp=state.parties?.[partyId];
+
+ if(!pp)return;
+
+ const candidates=
+  state.politicians
+   .filter(p=>
+    p.active &&
+    p.partyId===partyId
+   )
+   .sort((a,b)=>{
+    const scoreA=
+     Number(a.popularity||0)+
+     Number(a.human||0)+
+     Number(a.ambition||0);
+
+    const scoreB=
+     Number(b.popularity||0)+
+     Number(b.human||0)+
+     Number(b.ambition||0);
+
+    return scoreB-scoreA;
+   });
+
+ if(!candidates.length){
+  pp.leaderId=null;
+  pp.officers={
+   secretaryGeneral:null,
+   policy:null,
+   election:null,
+   media:null
+  };
+  return;
+ }
+
+ const leader=candidates[0];
+
+ pp.leaderId=leader.id;
+ leader.internalTitle="党首";
+
+ const officers=[
+  "secretaryGeneral",
+  "policy",
+  "election",
+  "media"
+ ];
+
+ pp.officers=pp.officers||{};
+
+ officers.forEach(key=>{
+  pp.officers[key]=null;
+ });
+
+ const used=new Set([leader.id]);
+
+ officers.forEach(key=>{
+  const candidate=
+   candidates.find(p=>!used.has(p.id));
+
+  if(!candidate)return;
+
+  pp.officers[key]=candidate.id;
+  used.add(candidate.id);
+
+  candidate.partyOfficerRole=
+   ({
+    secretaryGeneral:"幹事長",
+    policy:"政策責任者",
+    election:"選挙責任者",
+    media:"広報責任者"
+   })[key];
+ });
+}
 function appointOfficers(){
 if(!isLeader()){
 showToast("党首のみ役員を任命できます。");
@@ -7014,8 +7133,17 @@ function splitParty(){
    Math.floor(totalMembers/2)
   );
 
- const splitMembers=
-  candidates.slice(0,maxSplit);
+ const splitMembers=[
+ {
+  type:"politician",
+  id:"player",
+  name:state.player.name,
+  score:100
+ },
+ ...candidates
+  .sort((a,b)=>b.score-a.score)
+  .slice(0,Math.max(0,maxSplit-1))
+];
 
  const politicalSplit=
   splitMembers.filter(x=>x.type==="politician");
@@ -7282,11 +7410,42 @@ function executePartySplit(){
   });
 
  /*
-  * 分裂側の政治家を移動
-  */
- pending.splitMembers
-  .filter(x=>x.type==="politician")
-  .forEach(x=>{
+ * 分裂側の政治家を移動
+ */
+pending.splitMembers
+ .filter(x=>x.type==="politician")
+ .forEach(x=>{
+
+  /*
+   * プレイヤー本人
+   */
+  if(x.id==="player"){
+
+   state.player.partyId=newId;
+   state.player.internalTitle="議員";
+
+   if(!state.parties[newId].members.includes("player")){
+    state.parties[newId].members.push("player");
+   }
+
+   return;
+  }
+
+  /*
+   * AI政治家
+   */
+  const p=
+   state.politicians.find(
+    politician=>politician.id===x.id
+   );
+
+  if(!p)return;
+
+  p.partyId=newId;
+  p.internalTitle="議員";
+
+  state.parties[newId].members.push(p.id);
+ });
 
    const p=
     state.politicians.find(
@@ -7353,18 +7512,20 @@ function executePartySplit(){
   );
 
  const splitLeader=
-  splitPoliticians
-   .sort((a,b)=>
-    (
-     Number(b.popularity||0)+
-     Number(b.ambition||0)
-    )-
-    (
-     Number(a.popularity||0)+
-     Number(a.ambition||0)
-    )
-   )[0];
-
+ splitPoliticians.find(p=>p.id==="player")
+ ||
+ splitPoliticians
+  .slice()
+  .sort((a,b)=>
+   (
+    Number(b.popularity||0)+
+    Number(b.ambition||0)
+   )-
+   (
+    Number(a.popularity||0)+
+    Number(a.ambition||0)
+   )
+  )[0];
  if(splitLeader){
 
   state.parties[newId].leaderId=
@@ -7725,27 +7886,8 @@ function executePartySplit(){
   * 元党には別の党首候補を立てる。
   */
  if(oldParty.leaderId==="player"){
-
-  const replacement=
-   state.politicians
-    .filter(p=>
-     p.partyId===oldParty.id &&
-     p.id!=="player" &&
-     p.active
-    )
-    .sort((a,b)=>
-     (b.popularity+b.ambition)-
-     (a.popularity+a.ambition)
-    )[0];
-
-  oldParty.leaderId=
-   replacement?.id||null;
-
-  if(replacement){
-   replacement.internalTitle="党首";
-  }
- }
-
+ oldParty.leaderId=null;
+}
  /*
   * 新党を作成
   */
