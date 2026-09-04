@@ -2351,9 +2351,14 @@ function renderParty(){
 }
 
 function officerRow(label,key,pp){
-const id=pp.officers[key];
-const p=id?getPolitician(id):null;
-return `<div class="row"><span>${label}</span><b>${esc(p?.name||"未任命")}</b></div>`;
+ const id=pp.officers?.[key];
+ const p=id?getPerson(id):null;
+
+ return `
+ <div class="row">
+  <span>${label}</span>
+  <b>${esc(p?.name||"未任命")}</b>
+ </div>`;
 }
 
 function renderDiet(){
@@ -2539,9 +2544,9 @@ id:m.id,name:m.name,house:"党員",popularity:m.support,execution:50,
 human:50,ambition:60,trust:m.loyalty,media:m.recognition
 })));
 }
-function getCandidatePerson(id){
+function getPerson(id){
  if(id==="player"){
-  return state.player;
+  return state.player||null;
  }
 
  const politician=getPolitician(id);
@@ -2549,35 +2554,46 @@ function getCandidatePerson(id){
   return politician;
  }
 
- for(const arr of Object.values(state.partyMembers||{})){
-  const member=arr.find(x=>x.id===id);
+ const member=findPartyMember(id);
+ if(member){
+  const pp=party(member.partyId);
 
-  if(member){
-   return {
-    ...member,
-    human:50,
-    execution:50,
-    ambition:60,
-    trust:member.loyalty||50,
-    popularity:member.support||0,
-    media:member.recognition||0,
-    ideology:
-     party(member.partyId)?.ideology
-      ? Math.round(party(member.partyId).ideology*100)
-      : 0
-   };
-  }
+  return {
+   ...member,
+   house:member.house||"党員",
+   human:member.human??50,
+   execution:member.execution??50,
+   ambition:member.ambition??60,
+   trust:member.trust??member.loyalty??50,
+   popularity:member.popularity??member.support??0,
+   media:member.media??member.recognition??0,
+   ideology:
+    member.ideology??
+    (pp ? Math.round(Number(pp.ideology||0)*100) : 0),
+   localSupport:member.localSupport??member.support??0,
+   active:member.active!==false
+  };
  }
 
  return null;
 }
- function findPartyMember(id){
+
+function getCandidatePerson(id){
+ return getPerson(id);
+}
+
+function findPartyMember(id){
  for(const arr of Object.values(state.partyMembers||{})){
   const member=arr.find(x=>x.id===id);
   if(member)return member;
  }
 
  return null;
+}
+
+function candidateName(id){
+ const p=getPerson(id);
+ return p?.name||id;
 }
 function candidateName(id){
 const p=getPolitician(id);
@@ -4545,14 +4561,67 @@ ${candidates.map(p=>`<option value="${p.id}" ${pp.officers[x[0]]===p.id?"selecte
 }
 
 function saveOfficers(){
-const pp=getPlayerParty();
-["secretaryGeneral","policy","election","media"].forEach(k=>{
-pp.officers[k]=document.getElementById("off_"+k)?.value||null;
-});
-closeModal();
-log("党執行部を任命した。");
-render();
-showToast("党執行部を任命しました。");
+ const pp=getPlayerParty();
+ if(!pp)return;
+
+ const officerRoles={
+  secretaryGeneral:"幹事長",
+  policy:"政策責任者",
+  election:"選挙責任者",
+  media:"広報責任者"
+ };
+
+ const selected={};
+
+ Object.keys(officerRoles).forEach(k=>{
+  selected[k]=document.getElementById("off_"+k)?.value||null;
+ });
+
+ /*
+  * いったん、この党の一般党員の役員肩書きをリセット
+  */
+ const ordinary=state.partyMembers[pp.id]||[];
+
+ ordinary.forEach(member=>{
+  if(
+   member.role==="幹事長" ||
+   member.role==="政策責任者" ||
+   member.role==="選挙責任者" ||
+   member.role==="広報責任者"
+  ){
+   member.role="一般党員";
+  }
+ });
+
+ /*
+  * 新しい役員を登録
+  */
+ Object.keys(officerRoles).forEach(k=>{
+  const id=selected[k];
+
+  pp.officers[k]=id||null;
+
+  if(!id)return;
+
+  const member=findPartyMember(id);
+
+  if(member && member.partyId===pp.id){
+   member.role=officerRoles[k];
+  }
+
+  const politician=getPolitician(id);
+
+  if(politician && politician.partyId===pp.id){
+   politician.partyOfficerRole=officerRoles[k];
+  }
+ });
+
+ closeModal();
+
+ log("党執行部を任命した。");
+ render();
+
+ showToast("党執行部を任命しました。");
 }
 
 /* =========================================================
@@ -5545,7 +5614,164 @@ saveSilently();
 render();
 showToast("ゲーム開始！");
 }
+function generatePartyMemberNames(count=5){
+ const surnames=[
+  "佐藤","鈴木","高橋","田中","伊藤",
+  "渡辺","山本","中村","小林","加藤",
+  "吉田","山田","佐々木","山口","松本",
+  "井上","木村","林","斎藤","清水"
+ ];
 
+ const maleNames=[
+  "健一","直樹","誠","大輔","雄介",
+  "拓也","和也","翔太","達也","浩二",
+  "慎一","康平","亮介","修","隆"
+ ];
+
+ const femaleNames=[
+  "美咲","由美","直子","彩","真由美",
+  "陽子","麻衣","恵","香織","優子",
+  "千尋","沙織","綾","奈緒","明美"
+ ];
+
+ const result=[];
+ const used=new Set();
+
+ while(result.length<count){
+  const surname=surnames[rint(0,surnames.length-1)];
+  const names=Math.random()<0.5?maleNames:femaleNames;
+  const given=names[rint(0,names.length-1)];
+  const name=surname+" "+given;
+
+  if(used.has(name))continue;
+
+  used.add(name);
+  result.push(name);
+ }
+
+ return result;
+}
+ function buildInitialPartyPledges(philosophy,ideology){
+ const keys=[
+  "economy",
+  "taxation",
+  "welfare",
+  "education",
+  "childcare",
+  "diplomacy",
+  "defense",
+  "energy",
+  "environment",
+  "constitutionalReform"
+ ];
+
+ const partyDraft={
+  ideology:ideology/100
+ };
+
+ const pledges={};
+ const pledgeTexts={};
+
+ const text=String(philosophy||"").toLowerCase();
+
+ const rules={
+  economy:[
+   ["成長",12],["経済成長",15],["投資",10],["産業",10],
+   ["賃金",10],["雇用",8],["規制改革",10],
+   ["格差",-8],["分配",8],["生活者",6]
+  ],
+  taxation:[
+   ["減税",15],["負担軽減",12],["消費税廃止",20],
+   ["増税",-15],["財源確保",6],["財政再建",-5]
+  ],
+  welfare:[
+   ["社会保障",12],["福祉",12],["年金",8],["医療",8],
+   ["介護",8],["貧困",10],["給付",8]
+  ],
+  education:[
+   ["教育",12],["学校",8],["大学",8],["研究",8],
+   ["人材育成",10]
+  ],
+  childcare:[
+   ["子育て",15],["少子化",15],["出産",10],
+   ["子ども",12],["子供",12],["育児",10]
+  ],
+  diplomacy:[
+   ["外交",12],["国際協調",15],["多角外交",20],
+   ["多国間",18],["国連",10],["ASEAN",10],
+   ["インド",8],["欧州",8],["EU",8],
+   ["対中",8],["対米",8],["対露",8],
+   ["アメリカ",5],["中国",5],["ロシア",5],
+   ["自主外交",15],["国益",8],["日米同盟",8]
+  ],
+  defense:[
+   ["防衛",15],["安全保障",15],["自衛隊",12],
+   ["抑止",12],["日米同盟",8],
+   ["軍縮",-15],["軍事費削減",-15],["専守防衛",-5]
+  ],
+  energy:[
+   ["原発",10],["原子力",10],["エネルギー安全保障",12],
+   ["再生可能",12],["再エネ",12],
+   ["脱原発",-18],["原発ゼロ",-25]
+  ],
+  environment:[
+   ["環境",12],["脱炭素",15],["気候変動",12],
+   ["温暖化",10],["再生可能",8],["再エネ",8]
+  ],
+  constitutionalReform:[
+   ["憲法改正",20],["改憲",20],["憲法改革",20],
+   ["護憲",-20],["立憲主義",-8],
+   ["基本的人権",-3],["平和主義",-5]
+  ]
+ };
+
+ keys.forEach(key=>{
+  let value=getPartyPolicyTarget(partyDraft,key);
+
+  for(const [word,delta] of (rules[key]||[])){
+   if(text.includes(word)){
+    value+=delta;
+   }
+  }
+
+  pledges[key]=clamp(Math.round(value),0,100);
+
+  pledgeTexts[key]=generatePledgeText(
+   key,
+   pledges[key],
+   "党の基本方針「"+philosophy+"」を踏まえ、この分野の政策を進める。"
+  );
+ });
+
+ /*
+  * 哲学に具体的な外交方針が書かれていた場合、
+  * 公約文にも実際に反映する。
+  */
+ if(
+  text.includes("多角外交") ||
+  text.includes("多国間") ||
+  text.includes("国際協調")
+ ){
+  pledgeTexts.diplomacy=
+   "党の基本方針「"+philosophy+
+   "」を踏まえ、特定国だけに依存しない多角的・多国間外交を推進する。";
+ }
+
+ if(
+  text.includes("自主外交") ||
+  text.includes("アメリカ一強") ||
+  text.includes("米国一強")
+ ){
+  pledgeTexts.diplomacy=
+   "党の基本方針「"+philosophy+
+   "」を踏まえ、特定国への過度な依存を避け、自主性を重視した多角外交を進める。";
+ }
+
+ return {
+  pledges,
+  pledgeTexts
+ };
+}
 function startNewParty(){
 const partyName=document.getElementById("newPartyName")?.value.trim()||"日本改革党";
 const playerName=document.getElementById("newPlayerName")?.value.trim()||"山田太郎";
@@ -5553,29 +5779,70 @@ const philosophy=document.getElementById("newPartyPhilosophy")?.value.trim()||"�
 const ideology=Number(document.getElementById("newPartyIdeology")?.value||0);
 
 const id="newparty_"+Date.now();
+const initialPledges=buildInitialPartyPledges(
+ philosophy,
+ ideology
+);
+
 state.parties[id]={
-id,name:partyName,short:partyName.slice(0,5),
-ideology:ideology/100,support:1.2,published:1.2,
-color:"green",
-lowerSeats:0,upperSeats:0,
-leaderId:"player",
-philosophy,
-members:[],
-officers:{secretaryGeneral:null,policy:null,election:null,media:null}
+ id,
+ name:partyName,
+ short:partyName.slice(0,5),
+
+ ideology:ideology/100,
+ support:1.2,
+ published:1.2,
+
+ color:"green",
+
+ lowerSeats:0,
+ upperSeats:0,
+
+ leaderId:"player",
+
+ philosophy,
+
+ pledges:initialPledges.pledges,
+ pledgeTexts:initialPledges.pledgeTexts,
+
+ pledgeDynamics:{
+  pressure:0,
+  lastChanged:null,
+  lastReason:"新党結成時の初期公約",
+  previousSupport:1.2,
+  history:[]
+ },
+
+ members:[],
+
+ officers:{
+  secretaryGeneral:null,
+  policy:null,
+  election:null,
+  media:null
+ }
 };
 
 state.partyMembers[id]=[];
+
+const memberNames=generatePartyMemberNames(5);
+
 for(let i=0;i<5;i++){
-state.partyMembers[id].push({
-id:"m_"+id+"_"+i,
-name:partyName+" 党員"+(i+1),
-partyId:id,
-age:rint(25,55),
-recognition:rint(8,18),
-support:rint(5,15),
-role:"一般党員",
-loyalty:rint(70,90)
-});
+ state.partyMembers[id].push({
+  id:"m_"+id+"_"+i,
+  name:memberNames[i],
+  partyId:id,
+  age:rint(25,55),
+  recognition:rint(8,18),
+  support:rint(5,15),
+  role:"一般党員",
+  loyalty:rint(70,90),
+  ideology:clamp(
+   ideology+rint(-15,15),
+   -80,
+   80
+  )
+ });
 }
 
 state.started=true;
