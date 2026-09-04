@@ -2004,10 +2004,33 @@ function renderPeople(){
  if(tab!=="all"){
   list=list.filter(p=>p.partyId===tab);
  }
+
 const ordinaryMembers=
  tab!=="all"
   ? (state.partyMembers?.[tab]||[])
   : Object.values(state.partyMembers||{}).flat();
+
+const playerCard=
+ state.player &&
+ (tab==="all" || state.player.partyId===tab)
+  ? [{
+     id:"player",
+     name:state.player.name,
+     partyId:state.player.partyId,
+     age:state.player.age,
+     house:state.player.house||"党首",
+     group:state.player.internalTitle||"党首",
+     human:state.player.human??50,
+     popularity:state.player.popularity??0,
+     execution:state.player.execution??50,
+     ambition:state.player.ambition??60,
+     trust:state.player.trust??50,
+     media:state.player.media??0,
+     ideology:state.player.ideology??0,
+     localSupport:state.player.localSupport??0,
+     active:true
+    }]
+  : [];
 
 const ordinaryCards=ordinaryMembers.map(m=>({
  id:m.id,
@@ -2066,7 +2089,8 @@ const ordinaryCards=ordinaryMembers.map(m=>({
  <div class="col12">
  <div class="grid">
 
- ${list.slice(0,120).map(personCard).join("")}
+${playerCard.map(personCard).join("")}
+${list.slice(0,120).map(personCard).join("")}
 ${ordinaryCards.slice(0,20).map(personCard).join("")}
 
  </div>
@@ -2178,50 +2202,35 @@ function renderParty(){
  :'<div class="muted">党首になると任命できます。</div>'}
  </div>
 
- <div class="col6 card">
- <div class="section-title">
-  <h2>所属議員</h2>
-  <span class="muted">${members.filter(id=>{
-   const p=getPolitician(id);
-   return p?.incumbent;
-  }).length}人</span>
- </div>
- <div class="list">
- ${members.filter(id=>{
-  const p=getPolitician(id);
-  return p?.incumbent;
- }).slice(0,40).map(id=>{
-  const p=getPolitician(id);
-  return p
-   ?`<div class="row clickable" data-action="person" data-id="${p.id}">
-     <div>
-      <b>${esc(p.name)}</b>
-      <div class="muted">${p.house} / ${p.group}</div>
-     </div>
-     <span class="badge">${p.popularity}</span>
-    </div>`
-   :"";
- }).join("")}
- </div>
-</div>
+   <div class="col6 card">
+  <div class="section-title">
+   <h2>所属議員</h2>
+   <span class="muted">${members.filter(id=>{
+    const p=getPerson(id);
+    return p?.incumbent || id==="player";
+   }).length}人</span>
+  </div>
 
- <div class="list">
- ${members.slice(0,40).map(id=>{
-  const p=getPolitician(id);
-  return p
-   ?`<div class="row clickable" data-action="person" data-id="${p.id}">
-     <div>
-      <b>${esc(p.name)}</b>
-      <div class="muted">${p.house} / ${p.group}</div>
-     </div>
-     <span class="badge">${p.popularity}</span>
-    </div>`
-   :"";
- }).join("")}
- </div>
+  <div class="list">
+  ${members.filter(id=>{
+   const p=getPerson(id);
+   return p?.incumbent || id==="player";
+  }).slice(0,40).map(id=>{
+   const p=getPerson(id);
+   return p
+    ?`<div class="row clickable" data-action="person" data-id="${p.id}">
+      <div>
+       <b>${esc(p.name)}</b>
+       <div class="muted">${p.house||"党員"} / ${p.group||p.internalTitle||"一般"}</div>
+      </div>
+      <span class="badge">${p.popularity??0}</span>
+     </div>`
+    :"";
+  }).join("")}
+  </div>
  </div>
 
- <div class="col6 card">
+  <div class="col6 card">
  <div class="section-title">
  <h2>一般党員</h2>
  <span class="muted">${ordinary.length}人</span>
@@ -2251,7 +2260,7 @@ function renderParty(){
  </div>
 
  <div class="tabs2">
-  ${PARTIES.map(p=>`
+  ${Object.values(state.parties||{}).map(p=>`
    <button
     type="button"
     data-action="selectPledgeParty"
