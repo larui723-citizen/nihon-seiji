@@ -6387,30 +6387,50 @@ function generatePartyMemberNames(count=5){
    100
   );
 
- let accepted=false;
- let resultText="";
+   let accepted=false;
+  let resultText="";
+  let mergerLeader="player";
 
- if(finalScore>=75){
-  accepted=true;
-  resultText=
-   "相手党首は合併に前向きです。"+
-   "両党を一つの政党として統合する交渉に進めます。";
- }else if(finalScore>=60){
-  accepted=true;
-  resultText=
-   "相手党首は条件付きで合併に同意しました。";
- }else if(finalScore>=45){
-  accepted=false;
-  resultText=
-   "相手党首は合併には慎重で、"+
-   "今回は合意しませんでした。";
- }else{
-  accepted=false;
-  resultText=
-   "相手党首は両党の違いが大きいとして、"+
-   "合併を拒否しました。";
- }
+  if(finalScore>=75){
+   accepted=true;
 
+   /*
+    * 合併条件がかなり良い場合
+    * プレイヤー側の立場を維持する。
+    */
+   mergerLeader="player";
+
+   resultText=
+    "相手党首は合併に前向きです。"+
+    "あなたが党首のまま両党を統合する条件で合意できます。";
+
+  }else if(finalScore>=60){
+   accepted=true;
+
+   /*
+    * 条件付き合意の場合
+    * 相手党首が統合後の党首になる。
+    */
+   mergerLeader=targetParty.leaderId;
+
+   resultText=
+    "相手党首は条件付きで合併に同意しました。"+
+    "合併後は相手党首が党首となります。";
+
+  }else if(finalScore>=45){
+   accepted=false;
+
+   resultText=
+    "相手党首は合併には慎重で、"+
+    "今回は合意しませんでした。";
+
+  }else{
+   accepted=false;
+
+   resultText=
+    "相手党首は両党の違いが大きいとして、"+
+    "合併を拒否しました。";
+  }
  closeModal();
 
  openModal(
@@ -6452,18 +6472,19 @@ function generatePartyMemberNames(count=5){
         合併を確定すると、
         ${esc(currentParty.name)}の議席・所属議員・一般党員が
         ${esc(targetParty.name)}へ統合されます。<br>
-        合併後の党首は現在の相手党首になります。
+        合併後の党首は条件によって決定されます。
        </div>
       </div>
 
       <div class="actions" style="margin-top:16px">
        <button
-        type="button"
-        class="primary"
-        data-action="executePartyMerger"
-        data-party="${esc(targetParty.id)}">
-        合併を確定する
-       </button>
+ type="button"
+ class="primary"
+ data-action="executePartyMerger"
+ data-party="${esc(targetParty.id)}"
+ data-leader="${esc(mergerLeader)}">
+ 合併を確定する
+</button>
 
        <button type="button" data-action="closeModal">
         キャンセル
@@ -6552,7 +6573,7 @@ function generatePartyMemberNames(count=5){
   `
  );
 }
- function executePartyMerger(targetId){
+ function executePartyMerger(targetId, mergerLeader){
 
  const currentParty=getPlayerParty();
  const targetParty=party(targetId);
@@ -6642,30 +6663,66 @@ function generatePartyMemberNames(count=5){
  state.player.internalTitle="議員";
 
  /*
-  * 合併後は相手党首を党首とする
-  */
- const survivingLeader=
-  targetParty.leaderId;
+ * 合併後の党首を確定
+ *
+ * mergerLeader:
+ *   "player"    → プレイヤーが党首
+ *   相手党首ID → 相手党首が党首
+ */
+const finalLeader=
+ mergerLeader||targetParty.leaderId||null;
 
- targetParty.leaderId=
-  survivingLeader||null;
+targetParty.leaderId=
+ finalLeader;
 
- /*
-  * プレイヤーが元党首だった場合は役職を解除
-  */
- if(currentParty.leaderId==="player"){
-  state.player.internalTitle="議員";
+/*
+ * 合併後の政治家データの役職を同期
+ */
+state.politicians.forEach(p=>{
 
-  const playerPolitician=
-   state.politicians.find(
-    p=>p.id==="player"
-   );
+ if(p.partyId===targetParty.id){
 
-  if(playerPolitician){
-   playerPolitician.internalTitle="議員";
+  if(p.id===finalLeader){
+   p.internalTitle="党首";
+  }else{
+   p.internalTitle="議員";
   }
+
  }
 
+});
+
+/*
+ * プレイヤー本人の役職も同期
+ */
+if(finalLeader==="player"){
+
+ state.player.internalTitle="党首";
+
+}else{
+
+ state.player.internalTitle="議員";
+
+}
+
+/*
+ * プレイヤーの政治家データも同期
+ */
+const playerPolitician=
+ state.politicians.find(
+  p=>p.id==="player"
+ );
+
+if(playerPolitician){
+
+ playerPolitician.partyId=targetParty.id;
+
+ playerPolitician.internalTitle=
+  finalLeader==="player"
+   ?"党首"
+   :"議員";
+
+}
  /*
   * 元政党を削除
   */
@@ -7360,7 +7417,10 @@ if(a==="confirmMergeWithAnotherParty"){
 }
 
 if(a==="executePartyMerger"){
- executePartyMerger(b.dataset.party);
+ executePartyMerger(
+  b.dataset.party,
+  b.dataset.leader
+ );
  return;
 }
  if(a==="executeTransferToAnotherParty"){
