@@ -1924,7 +1924,13 @@ const bills=[
 ["社会保障改革法案","社会保障","社会保障制度の持続可能性を高める。",.1]
 ];
 const x=bills[(seed-1)%bills.length];
-return {title:x[0],category:x[1],text:x[2],ideology:x[3],support:0,oppose:0,abstain:0};
+return {title:x[0],category:x[1],text:x[2],ideology:x[3],support:0,oppose:0,abstain:0,stage:"committee",
+originHouse:"衆院",
+currentHouse:"衆院",
+governmentBill:true,
+committeeResult:null,
+plenaryResult:null,
+result:null};
 }
 
 let state=defaultState();
@@ -2775,115 +2781,469 @@ function officerRow(label,key,pp){
 }
 
 function renderDiet(){
-const bill=state.bill;
-const activeParties=
- Object.values(state.parties||{})
-  .filter(p=>p);
+ const bill=state.bill;
+ const activeParties=
+  Object.values(state.parties||{})
+   .filter(p=>p);
 
-const lower=
- activeParties.reduce(
-  (a,p)=>a+Number(p.lowerSeats||0),
-  0
- );
+ const lower=
+  activeParties.reduce(
+   (a,p)=>a+Number(p.lowerSeats||0),
+   0
+  );
 
-const upper=
- activeParties.reduce(
-  (a,p)=>a+Number(p.upperSeats||0),
-  0
- );
-return `
-<div class="grid">
-<div class="col4 card">
-<h2>国会の議席</h2>
-<div class="row"><span>衆議院</span><b>${lower}</b></div>
-<div class="row"><span>参議院</span><b>${upper}</b></div>
-<hr>
-${activeParties
- .filter(p=>
-  Number(p.lowerSeats||0)+
-  Number(p.upperSeats||0)>0
- )
- .map(p=>`
-<div style="margin-bottom:8px">
-<div class="row"><span>${esc(p.short||p.name)}</span><b>${Number(p.lowerSeats||0)+Number(p.upperSeats||0)}</b></div>
-<div class="bar"><span style="width:${clamp((Number(p.lowerSeats||0)+Number(p.upperSeats||0))/465*100,1,100)}%"></span></div>
-</div>`).join("")}
-</div>
+ const upper=
+  activeParties.reduce(
+   (a,p)=>a+Number(p.upperSeats||0),
+   0
+  );
 
-<div class="col8 card gradient">
-<div class="section-title">
-<div>
-<h2>審議中：${esc(bill?.title||"法案なし")}</h2>
-<div class="muted">
-${esc(bill?.category||"")} / ${esc(bill?.text||"")}
-</div>
-</div>
-<span class="badge yellow">法案投票</span>
-</div>
+ const diet=state.diet||{
+  committees:{
+   lower:[],
+   upper:[]
+  },
+  assignments:{},
+  playerCommittee:null
+ };
 
+ const playerCommitteeId=
+  diet.playerCommittee;
 
-<div class="kpis">
-<div class="kpi green"><div class="label">賛成票</div><div class="value">${bill.support}</div></div>
-<div class="kpi red"><div class="label">反対票</div><div class="value">${bill.oppose}</div></div>
-<div class="kpi yellow"><div class="label">棄権</div><div class="value">${bill.abstain}</div></div>
-<div class="kpi cyan"><div class="label">あなた</div><div class="value">${state.player.house}</div></div>
-</div>
+ const playerHouse=
+  state.player?.house==="参院"
+   ?"upper"
+   :"lower";
 
-<div class="actions">
-<button type="button" class="green-btn" data-action="voteBill" data-vote="support">賛成</button>
-<button type="button" class="red-btn" data-action="voteBill" data-vote="oppose">反対</button>
-<button type="button" class="yellow-btn" data-action="voteBill" data-vote="abstain">棄権</button>
-<button type="button" data-action="resolveBill">採決を実施</button>
-</div>
+ const playerCommittee=
+  (diet.committees?.[playerHouse]||[])
+   .find(c=>c.id===playerCommitteeId);
 
-${state.lastBillResult?`
-<div class="card" style="margin-top:12px">
-  <h3>前回の採決結果</h3>
-  <div class="list">
-    <div class="row">
-      <span>あなたの投票</span>
-      <b>${
-        state.lastBillResult.playerVote==="support"
-          ?"賛成"
-          :state.lastBillResult.playerVote==="oppose"
-            ?"反対"
-            :"棄権"
-      }</b>
+ const renderCommitteeList=(houseKey,houseName)=>{
+  const committees=
+   diet.committees?.[houseKey]||[];
+
+  return `
+  <div class="card" style="margin-top:12px">
+   <div class="section-title">
+    <div>
+     <h3>${houseName}の委員会</h3>
+     <div class="muted">
+      全${committees.length}委員会
+     </div>
     </div>
+    <span class="badge cyan">${houseName}</span>
+   </div>
 
-    <div class="row">
-      <span>賛成</span>
-      <b>${state.lastBillResult.support}票</b>
-    </div>
+   <div class="list">
+    ${
+     committees.length
+      ? committees.map(c=>{
+         const chair=
+          c.chairId
+           ? getPerson(c.chairId)
+           : null;
 
-    <div class="row">
-      <span>反対</span>
-      <b>${state.lastBillResult.oppose}票</b>
-    </div>
+         const members=
+          (c.members||[])
+           .map(id=>getPerson(id))
+           .filter(Boolean);
 
-    <div class="row">
-      <span>棄権</span>
-      <b>${state.lastBillResult.abstain}票</b>
-    </div>
+         const playerHere=
+          state.player &&
+          state.player.house===houseName &&
+          members.some(p=>p.id==="player");
 
-    <div class="row">
-      <span>結果</span>
-      <b>${state.lastBillResult.passed?"可決":"否決"}</b>
-    </div>
+         return `
+         <div
+          class="row"
+          style="
+           display:block;
+           margin-bottom:10px;
+           padding:12px;
+          "
+         >
+          <div class="section-title">
+           <div>
+            <b>${esc(c.name)}</b>
+            <div class="muted">
+             担当分野：${esc(c.field||"総合")}
+            </div>
+           </div>
+
+           <div style="display:flex;gap:6px;flex-wrap:wrap">
+            ${
+             playerHere
+              ? `<span class="badge green">あなたが所属</span>`
+              : ""
+            }
+
+            <span class="badge">
+             ${members.length}人
+            </span>
+           </div>
+          </div>
+
+          <div
+           class="muted"
+           style="margin-top:8px"
+          >
+           委員長：
+           <b>${esc(chair?.name||"未定")}</b>
+          </div>
+
+          <div
+           class="muted"
+           style="margin-top:6px"
+          >
+           所属議員：
+           ${
+            members.length
+             ? members
+                .slice(0,8)
+                .map(p=>esc(p.name))
+                .join("、")
+             : "未配置"
+           }
+           ${
+            members.length>8
+             ? `、ほか${members.length-8}人`
+             : ""
+           }
+          </div>
+
+          <div
+           class="small muted"
+           style="margin-top:6px"
+          >
+           審議案件：
+           ${Number(c.bills?.length||0)}件
+           ／ 作業量：
+           ${Number(c.workload||0)}
+          </div>
+         </div>
+         `;
+        }).join("")
+      : `<div class="muted">委員会データがありません。</div>`
+    }
+   </div>
   </div>
-</div>
-`:""}
+  `;
+ };
 
-<hr>
-<h3>政党別の投票傾向</h3>
-<div class="list">
-${PARTIES.map(p=>{
-const pos=partyVotePosition(p);
-return `<div class="row"><span>${p.short}</span><span class="badge ${pos==="賛成"?"green":pos==="反対"?"red":"yellow"}">${pos}</span></div>`;
-}).join("")}
-</div>
-</div>
-</div>`;
+ return `
+ <div class="grid">
+
+  <div class="col4 card">
+   <h2>国会の議席</h2>
+
+   <div class="row">
+    <span>衆議院</span>
+    <b>${lower}</b>
+   </div>
+
+   <div class="row">
+    <span>参議院</span>
+    <b>${upper}</b>
+   </div>
+
+   <hr>
+
+   ${activeParties
+    .filter(p=>
+     Number(p.lowerSeats||0)+
+     Number(p.upperSeats||0)>0
+    )
+    .map(p=>`
+     <div style="margin-bottom:8px">
+      <div class="row">
+       <span>${esc(p.short||p.name)}</span>
+       <b>
+        ${Number(p.lowerSeats||0)+Number(p.upperSeats||0)}
+       </b>
+      </div>
+
+      <div class="bar">
+       <span
+        style="
+         width:${clamp(
+          (Number(p.lowerSeats||0)+
+           Number(p.upperSeats||0))/465*100,
+          1,
+          100
+         )}%
+        "
+       ></span>
+      </div>
+     </div>
+    `).join("")}
+  </div>
+
+
+  <div class="col8 card gradient">
+
+   <div class="section-title">
+    <div>
+     <h2>
+      審議中：
+      ${esc(bill?.title||"法案なし")}
+     </h2>
+
+     <div class="muted">
+      ${esc(bill?.category||"")}
+      /
+      ${esc(bill?.text||"")}
+     </div>
+    </div>
+
+    <span class="badge yellow">法案投票</span>
+   </div>
+
+
+   <div class="kpis">
+
+    <div class="kpi green">
+     <div class="label">賛成票</div>
+     <div class="value">${bill.support}</div>
+    </div>
+
+    <div class="kpi red">
+     <div class="label">反対票</div>
+     <div class="value">${bill.oppose}</div>
+    </div>
+
+    <div class="kpi yellow">
+     <div class="label">棄権</div>
+     <div class="value">${bill.abstain}</div>
+    </div>
+
+    <div class="kpi cyan">
+     <div class="label">あなた</div>
+     <div class="value">${state.player.house}</div>
+    </div>
+
+   </div>
+
+
+   <div class="actions">
+
+    <button
+     type="button"
+     class="green-btn"
+     data-action="voteBill"
+     data-vote="support"
+    >
+     賛成
+    </button>
+
+    <button
+     type="button"
+     class="red-btn"
+     data-action="voteBill"
+     data-vote="oppose"
+    >
+     反対
+    </button>
+
+    <button
+     type="button"
+     class="yellow-btn"
+     data-action="voteBill"
+     data-vote="abstain"
+    >
+     棄権
+    </button>
+
+    <button
+     type="button"
+     data-action="resolveBill"
+    >
+     採決を実施
+    </button>
+
+   </div>
+
+
+   ${
+    state.lastBillResult
+     ? `
+      <div
+       class="card"
+       style="margin-top:12px"
+      >
+       <h3>前回の採決結果</h3>
+
+       <div class="list">
+
+        <div class="row">
+         <span>あなたの投票</span>
+         <b>
+          ${
+           state.lastBillResult.playerVote==="support"
+            ?"賛成"
+            :state.lastBillResult.playerVote==="oppose"
+             ?"反対"
+             :"棄権"
+          }
+         </b>
+        </div>
+
+        <div class="row">
+         <span>賛成</span>
+         <b>
+          ${state.lastBillResult.support}票
+         </b>
+        </div>
+
+        <div class="row">
+         <span>反対</span>
+         <b>
+          ${state.lastBillResult.oppose}票
+         </b>
+        </div>
+
+        <div class="row">
+         <span>棄権</span>
+         <b>
+          ${state.lastBillResult.abstain}票
+         </b>
+        </div>
+
+        <div class="row">
+         <span>結果</span>
+         <b>
+          ${
+           state.lastBillResult.passed
+            ?"可決"
+            :"否決"
+          }
+         </b>
+        </div>
+
+       </div>
+      </div>
+     `
+     :""
+   }
+
+
+   <hr>
+
+   <h3>政党別の投票傾向</h3>
+
+   <div class="list">
+
+    ${PARTIES.map(p=>{
+     const pos=partyVotePosition(p);
+
+     return `
+      <div class="row">
+       <span>${p.short}</span>
+
+       <span
+        class="badge ${
+         pos==="賛成"
+          ?"green"
+          :pos==="反対"
+           ?"red"
+           :"yellow"
+        }"
+       >
+        ${pos}
+       </span>
+      </div>
+     `;
+    }).join("")}
+
+   </div>
+
+  </div>
+
+
+  <div class="col12 card gradient">
+
+   <div class="section-title">
+    <div>
+     <h2>国会委員会</h2>
+
+     <div class="muted">
+      法案は分野ごとの委員会で審議されます。
+      あなたが所属する委員会もここで確認できます。
+     </div>
+    </div>
+
+    <span class="badge cyan">
+     ${playerCommittee
+      ? "所属委員会あり"
+      : "所属委員会未定"}
+    </span>
+   </div>
+
+
+   ${
+    playerCommittee
+     ? `
+      <div
+       class="card"
+       style="margin-top:12px"
+      >
+       <div class="section-title">
+        <div>
+         <h3>あなたの所属委員会</h3>
+
+         <div class="muted">
+          ${state.player.house}
+         </div>
+        </div>
+
+        <span class="badge green">
+         ${esc(playerCommittee.name)}
+        </span>
+       </div>
+
+       <div
+        class="muted"
+        style="margin-top:8px"
+       >
+        担当分野：
+        <b>${esc(playerCommittee.field||"総合")}</b>
+       </div>
+
+       <div
+        class="muted"
+        style="margin-top:6px"
+       >
+        委員長：
+        <b>
+         ${esc(
+          getPerson(playerCommittee.chairId)?.name
+          ||"未定"
+         )}
+        </b>
+       </div>
+      </div>
+     `
+     : `
+      <div
+       class="card"
+       style="margin-top:12px"
+      >
+       <div class="muted">
+        現在、所属委員会が設定されていません。
+       </div>
+      </div>
+     `
+   }
+
+
+   ${renderCommitteeList("lower","衆院")}
+
+   ${renderCommitteeList("upper","参院")}
+
+  </div>
+
+ </div>
+ `;
 }
 
 function partyVotePosition(p){
@@ -4141,6 +4501,31 @@ function getPolicyDomainPressures(){
  };
 
 }
+function getDietTimeCost(){
+ const session=state.dietSession||{};
+
+ if(session.status!=="open"){
+  return 0;
+ }
+
+ switch(session.type){
+  case "常会":
+   return 80;
+
+  case "臨時会":
+   return 50;
+
+  case "特別会":
+   return 100;
+
+  case "緊急集会":
+   return 60;
+
+  default:
+   return 0;
+ }
+}
+
 function updateDietSession(){
  const month=state.date.month;
 
@@ -4615,101 +5000,316 @@ function voteBill(vote){
 }
 
 function resolveBill(){
-  const bill=state.bill;
 
-  let support=0;
-  let oppose=0;
-  let abstain=0;
+ const bill=state.bill;
 
-  // 各党の議席をもとに投票
-  PARTIES.forEach(p=>{
-    const x=state.parties[p.id];
+ if(!bill){
+  showToast("審議中の法案がありません。");
+  return;
+ }
 
-    const seats=
-      state.player.house==="参院"
-        ? x.upperSeats
-        : x.lowerSeats;
+ if(!bill.stage){
+  bill.stage="committee";
+ }
 
-    const pos=partyVotePosition(p);
+ const stage=bill.stage;
 
-    if(pos==="賛成"){
-      support+=seats;
-    }else if(pos==="反対"){
-      oppose+=seats;
-    }else{
-      abstain+=seats;
-    }
-  });
+ /*
+  * 委員会審査
+  */
+ if(stage==="committee"){
 
-  // プレイヤー本人の票
-  if(state.bill.playerVote==="support"){
-    support++;
-  }else if(state.bill.playerVote==="oppose"){
-    oppose++;
-  }else if(state.bill.playerVote==="abstain"){
-    abstain++;
+  const committee=
+   getBillCommittee(bill);
+
+  if(!committee){
+   showToast("担当委員会が設定されていません。");
+   return;
   }
 
-  const passed=support>oppose;
+  const result=
+   resolveCommitteeVote(bill,committee);
 
-  addNews(
-    "politics",
-    passed?"法案が国会を通過":"法案が国会で否決",
-    "ゲーム内シナリオ。"+
-    bill.title+
-    "は"+
-    (passed?"可決":"否決")+
-    "された。"
-  );
+  bill.committeeResult=result;
 
-  log(
-    "法案「"+
-    bill.title+
-    "」を採決。"+
-    "賛成"+support+
-    "・反対"+oppose+
-    "・棄権"+abstain+
-    "。結果："+(passed?"可決":"否決")+"。"
-  );
- state.lastBillResult={
-  playerVote:state.bill.playerVote || "abstain",
-  support:support,
-  oppose:oppose,
-  abstain:abstain,
-  passed:passed,
-  title:state.bill.title
-};
-const resultBox=document.getElementById("billResult");
+  if(result==="passed"){
+   bill.stage="plenary";
+   log(
+    `${bill.title}は${committee.name}で委員会可決となり、本会議へ送られることになった。`
+   );
+  }else{
+   bill.stage="rejected";
+   bill.result="否決";
+   log(
+    `${bill.title}は${committee.name}で否決された。`
+   );
+  }
 
-if(resultBox){
-  const voteText=
-    state.lastBillResult.playerVote==="support"
-      ?"賛成"
-      :state.lastBillResult.playerVote==="oppose"
-        ?"反対"
-        :"棄権";
-
-  resultBox.innerHTML=
-    "<strong>前回の採決結果</strong><br>"+
-    "あなたの投票："+voteText+"<br>"+
-    "賛成："+state.lastBillResult.support+"票<br>"+
-    "反対："+state.lastBillResult.oppose+"票<br>"+
-    "棄権："+state.lastBillResult.abstain+"票<br>"+
-    "結果："+(state.lastBillResult.passed?"可決":"否決");
-}
-state.bill=makeBill(rint(1,7));
-
+  saveSilently();
   render();
+  return;
+ }
 
-  showToast(
-    passed
-      ?"法案は可決されました。"
-      :"法案は否決されました。"
-  );
+
+ /*
+  * 本会議
+  */
+ if(stage==="plenary"){
+
+  const house=
+   bill.currentHouse||
+   bill.originHouse||
+   state.player?.house||
+   "衆院";
+
+  const result=
+   resolvePlenaryVote(bill,house);
+
+  bill.plenaryResult=result;
+
+  if(result==="passed"){
+
+   if(house==="衆院"){
+
+    bill.currentHouse="参院";
+    bill.stage="committee";
+    bill.upperCommitteeStarted=false;
+
+    log(
+     `${bill.title}は衆議院本会議で可決され、参議院へ送付された。`
+    );
+
+   }else{
+
+    bill.stage="enacted";
+    bill.result="成立";
+
+    log(
+     `${bill.title}は衆参両院で可決され、法律として成立した。`
+    );
+
+   }
+
+  }else{
+
+   bill.stage="rejected";
+   bill.result="否決";
+
+   log(
+    `${bill.title}は${house}本会議で否決された。`
+   );
+  }
+
+  saveSilently();
+  render();
+  return;
+ }
+
+
+ if(stage==="enacted"){
+
+  showToast("この法案はすでに成立しています。");
+  return;
+ }
+
+
+ if(stage==="rejected"){
+
+  showToast("この法案は否決されています。");
+  return;
+ }
+
 }
-/* =========================================================
-選挙
-========================================================= */
+
+function getBillCommittee(bill){
+
+ if(!state.diet?.committees){
+  return null;
+ }
+
+ const house=
+  bill.currentHouse||
+  bill.originHouse||
+  "衆院";
+
+ const key=
+  house==="参院"
+   ?"upper"
+   :"lower";
+
+ const committees=
+  state.diet.committees[key]||[];
+
+ /*
+  * 法案カテゴリーと委員会分野を対応させる
+  */
+ const map={
+  economy:"economy",
+  taxation:"finance",
+  welfare:"health",
+  education:"education",
+  childcare:"education",
+  diplomacy:"foreign",
+  defense:"security",
+  energy:"economy",
+  environment:"environment",
+  constitutionalReform:"constitutional"
+ };
+
+ const target=
+  map[bill.category];
+
+ if(target){
+
+  const exact=
+   committees.find(c=>
+    c.field===target
+   );
+
+  if(exact){
+   return exact;
+  }
+ }
+
+ /*
+  * 該当しない場合は内閣委員会
+  */
+ return committees.find(c=>
+  c.id==="cabinet"
+ )||committees[0]||null;
+}
+
+
+function resolveCommitteeVote(bill,committee){
+
+ const members=
+  (committee.members||[])
+   .map(id=>getPolitician(id))
+   .filter(Boolean);
+
+ if(!members.length){
+  return "passed";
+ }
+
+ let support=0;
+ let oppose=0;
+
+ members.forEach(p=>{
+
+  const party=
+   state.parties?.[p.partyId];
+
+  const partyIdeology=
+   Number(
+    party?.ideology||
+    p.ideology||
+    0
+   );
+
+  const billIdeology=
+   Number(bill.ideology||0);
+
+  const distance=
+   Math.abs(
+    partyIdeology-billIdeology
+   );
+
+  const loyalty=
+   Number(
+    p.loyalty||
+    p.trust||
+    50
+   );
+
+  let chance=
+   60-distance*25+loyalty*.15;
+
+  /*
+   * 政権与党は政府提出法案に賛成しやすい
+   */
+  if(
+   bill.governmentBill &&
+   state.governmentParties?.includes(
+    p.partyId
+   )
+  ){
+   chance+=20;
+  }
+
+  /*
+   * 野党は反対しやすい
+   */
+  if(
+   bill.governmentBill &&
+   !state.governmentParties?.includes(
+    p.partyId
+   )
+  ){
+   chance-=10;
+  }
+
+  if(Math.random()*100<chance){
+   support++;
+  }else{
+   oppose++;
+  }
+
+ });
+
+ return support>oppose
+  ?"passed"
+  :"rejected";
+}
+
+
+function resolvePlenaryVote(bill,house){
+
+ const parties=
+  Object.values(state.parties||{});
+
+ let support=0;
+ let oppose=0;
+
+ parties.forEach(p=>{
+
+  const seats=
+   house==="参院"
+    ?Number(p.upperSeats||0)
+    :Number(p.lowerSeats||0);
+
+  if(seats<=0)return;
+
+  const ideology=
+   Number(p.ideology||0);
+
+  const distance=
+   Math.abs(
+    ideology-
+    Number(bill.ideology||0)
+   );
+
+  let chance=
+   65-distance*25;
+
+  if(
+   bill.governmentBill &&
+   state.governmentParties?.includes(p.id)
+  ){
+   chance+=20;
+  }
+
+  if(Math.random()*100<chance){
+   support+=seats;
+  }else{
+   oppose+=seats;
+  }
+
+ });
+
+ return support>oppose
+  ?"passed"
+  :"rejected";
+}
 
 function saveDistrict(type,id){
 if(!isLeader()){
