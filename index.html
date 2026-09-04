@@ -2211,6 +2211,10 @@ function renderParty(){
  <button type="button" data-action="transferToAnotherParty">
   別の政党へ移籍する
  </button>
+
+ <button type="button" data-action="mergeWithAnotherParty">
+  他党との合併を申し込む
+ </button>
 </div>
 
    <div class="col6 card">
@@ -6220,6 +6224,492 @@ function generatePartyMemberNames(count=5){
   "への移籍が成立しました。"
  );
 }
+ function evaluateMergeRequest(){
+
+ const currentParty=getPlayerParty();
+
+ const select=
+  document.getElementById("mergeTargetParty");
+
+ const targetId=select?.value;
+ const targetParty=party(targetId);
+
+ if(!currentParty || !targetParty){
+  showToast("合併相手を確認できません。");
+  return;
+ }
+
+ /*
+  * ① 思想の近さ
+  * 最大30点
+  */
+ const ideologyDistance=
+  Math.abs(
+   Number(currentParty.ideology||0)-
+   Number(targetParty.ideology||0)
+  )*100;
+
+ const ideologyScore=
+  clamp(
+   30-(ideologyDistance*.30),
+   0,
+   30
+  );
+
+ /*
+  * ② 公約の近さ
+  * 最大25点
+  */
+ const pledgeKeys=[
+  "economy",
+  "taxation",
+  "welfare",
+  "education",
+  "childcare",
+  "diplomacy",
+  "defense",
+  "energy",
+  "environment",
+  "constitutionalReform"
+ ];
+
+ let pledgeDistance=0;
+ let pledgeCount=0;
+
+ pledgeKeys.forEach(key=>{
+  const a=Number(currentParty.pledges?.[key]??50);
+  const b=Number(targetParty.pledges?.[key]??50);
+
+  pledgeDistance+=Math.abs(a-b);
+  pledgeCount++;
+ });
+
+ const averagePledgeDistance=
+  pledgeCount
+   ? pledgeDistance/pledgeCount
+   : 50;
+
+ const policyScore=
+  clamp(
+   25-(averagePledgeDistance*.25),
+   0,
+   25
+  );
+
+ /*
+  * ③ 政党間の協力関係
+  * 最大20点
+  */
+ const relation=
+  state.partyRelations?.[currentParty.id]?.[targetParty.id];
+
+ const cooperation=
+  relation
+   ? Number(relation.cooperation||0)
+   : 50;
+
+ const relationScore=
+  clamp(
+   cooperation*.20,
+   0,
+   20
+  );
+
+ /*
+  * ④ プレイヤーへの信頼
+  * 最大15点
+  */
+ const targetLeader=
+  getPerson(targetParty.leaderId);
+
+ const leaderTrust=
+  Number(
+   targetLeader?.trust ??
+   50
+  );
+
+ const trustScore=
+  clamp(
+   leaderTrust*.15,
+   0,
+   15
+  );
+
+ /*
+  * ⑤ 議席規模
+  * 最大10点
+  *
+  * 大政党同士の合併ほど慎重になるため、
+  * 極端な加点にはしない。
+  */
+ const currentSeats=
+  Number(currentParty.lowerSeats||0)+
+  Number(currentParty.upperSeats||0);
+
+ const targetSeats=
+  Number(targetParty.lowerSeats||0)+
+  Number(targetParty.upperSeats||0);
+
+ const seatBalance=
+  Math.min(
+   currentSeats,
+   targetSeats
+  )/
+  Math.max(
+   1,
+   Math.max(currentSeats,targetSeats)
+  );
+
+ const seatScore=
+  clamp(
+   seatBalance*10,
+   0,
+   10
+  );
+
+ /*
+  * ランダム要素は±3だけ
+  */
+ const randomScore=
+  Math.floor(Math.random()*7)-3;
+
+ const finalScore=
+  clamp(
+   Math.round(
+    ideologyScore+
+    policyScore+
+    relationScore+
+    trustScore+
+    seatScore+
+    randomScore
+   ),
+   0,
+   100
+  );
+
+ let accepted=false;
+ let resultText="";
+
+ if(finalScore>=75){
+  accepted=true;
+  resultText=
+   "相手党首は合併に前向きです。"+
+   "両党を一つの政党として統合する交渉に進めます。";
+ }else if(finalScore>=60){
+  accepted=true;
+  resultText=
+   "相手党首は条件付きで合併に同意しました。";
+ }else if(finalScore>=45){
+  accepted=false;
+  resultText=
+   "相手党首は合併には慎重で、"+
+   "今回は合意しませんでした。";
+ }else{
+  accepted=false;
+  resultText=
+   "相手党首は両党の違いが大きいとして、"+
+   "合併を拒否しました。";
+ }
+
+ closeModal();
+
+ openModal(
+  accepted ? "合併合意" : "合併拒否",
+  `
+  <div class="card">
+
+   <h3>${esc(targetParty.name)}</h3>
+
+   <div class="section-title">
+    <b>相手党首の判断</b>
+    <span class="badge ${accepted?"green":"red"}">
+     ${accepted?"合意":"拒否"}
+    </span>
+   </div>
+
+   <div style="font-size:28px;font-weight:700;margin:12px 0">
+    ${finalScore}点
+   </div>
+
+   <div class="muted">
+    思想の近さ：${Math.round(ideologyScore)} / 30<br>
+    公約の近さ：${Math.round(policyScore)} / 25<br>
+    政党間協力：${Math.round(relationScore)} / 20<br>
+    党首への信頼：${Math.round(trustScore)} / 15<br>
+    議席規模：${Math.round(seatScore)} / 10<br>
+    政治的変動：${randomScore>=0?"+":""}${randomScore}
+   </div>
+
+   <p style="margin-top:14px">
+    ${esc(resultText)}
+   </p>
+
+   ${
+    accepted
+     ? `
+      <div class="card" style="margin-top:12px">
+       <div class="muted">
+        合併を確定すると、
+        ${esc(currentParty.name)}の議席・所属議員・一般党員が
+        ${esc(targetParty.name)}へ統合されます。<br>
+        合併後の党首は現在の相手党首になります。
+       </div>
+      </div>
+
+      <div class="actions" style="margin-top:16px">
+       <button
+        type="button"
+        class="primary"
+        data-action="executePartyMerger"
+        data-party="${esc(targetParty.id)}">
+        合併を確定する
+       </button>
+
+       <button type="button" data-action="closeModal">
+        キャンセル
+       </button>
+      </div>
+     `
+     : `
+      <div class="actions" style="margin-top:16px">
+       <button type="button" data-action="closeModal">
+        閉じる
+       </button>
+      </div>
+     `
+   }
+
+  </div>
+  `
+ );
+}
+ function mergeWithAnotherParty(){
+
+ if(!isLeader()){
+  showToast("他党との合併を申し込めるのは党首です。");
+  return;
+ }
+
+ const currentParty=getPlayerParty();
+
+ if(!currentParty || !state.player){
+  showToast("現在の所属政党を確認できません。");
+  return;
+ }
+
+ const parties=Object.values(state.parties||{})
+  .filter(p=>
+   p &&
+   p.id!==currentParty.id &&
+   Number(p.lowerSeats||0)+Number(p.upperSeats||0)>0
+  );
+
+ if(!parties.length){
+  showToast("合併を申し込める政党がありません。");
+  return;
+ }
+
+ openModal(
+  "他党との合併",
+  `
+  <p>
+   現在の政党
+   <b>${esc(currentParty.name)}</b>
+   から、他党との合併を申し込みます。
+  </p>
+
+  <div class="field">
+   <label>合併相手の政党</label>
+   <select id="mergeTargetParty">
+    ${parties.map(p=>`
+     <option value="${esc(p.id)}">
+      ${esc(p.name)}
+     </option>
+    `).join("")}
+   </select>
+  </div>
+
+  <div class="card" style="margin-top:12px">
+   <div class="muted">
+    合併は即時成立しません。<br>
+    相手政党の党首が合併条件を検討し、
+    合意した場合のみ合併できます。
+   </div>
+  </div>
+
+  <div class="actions" style="margin-top:16px">
+   <button
+    type="button"
+    class="primary"
+    data-action="confirmMergeWithAnotherParty">
+    合併を申し込む
+   </button>
+
+   <button type="button" data-action="closeModal">
+    キャンセル
+   </button>
+  </div>
+  `
+ );
+}
+ function executePartyMerger(targetId){
+
+ const currentParty=getPlayerParty();
+ const targetParty=party(targetId);
+
+ if(!currentParty || !targetParty){
+  showToast("合併対象の政党を確認できません。");
+  return;
+ }
+
+ if(currentParty.id===targetParty.id){
+  showToast("同じ政党とは合併できません。");
+  return;
+ }
+
+ /*
+  * 議席を統合
+  */
+ targetParty.lowerSeats=
+  Number(targetParty.lowerSeats||0)+
+  Number(currentParty.lowerSeats||0);
+
+ targetParty.upperSeats=
+  Number(targetParty.upperSeats||0)+
+  Number(currentParty.upperSeats||0);
+
+ /*
+  * 所属議員を統合
+  */
+ const currentMembers=
+  Array.isArray(currentParty.members)
+   ? currentParty.members
+   : [];
+
+ const targetMembers=
+  Array.isArray(targetParty.members)
+   ? targetParty.members
+   : [];
+
+ targetParty.members=
+  [...new Set([
+   ...targetMembers,
+   ...currentMembers
+  ])];
+
+ /*
+  * 一般党員を統合
+  */
+ const currentOrdinary=
+  state.partyMembers?.[currentParty.id]||[];
+
+ const targetOrdinary=
+  state.partyMembers?.[targetParty.id]||[];
+
+ state.partyMembers[targetParty.id]=[
+  ...targetOrdinary,
+  ...currentOrdinary
+ ].map(member=>({
+  ...member,
+  partyId:targetParty.id
+ }));
+
+ /*
+  * 政治家データの所属政党を変更
+  */
+ state.politicians.forEach(p=>{
+  if(p.partyId===currentParty.id){
+   p.partyId=targetParty.id;
+
+   if(p.id==="player"){
+    p.internalTitle="議員";
+   }
+  }
+ });
+
+ /*
+  * 一般党員の所属政党も更新
+  */
+ (state.partyMembers[targetParty.id]||[])
+  .forEach(member=>{
+   member.partyId=targetParty.id;
+  });
+
+ /*
+  * プレイヤーの所属政党を変更
+  */
+ state.player.partyId=targetParty.id;
+ state.player.internalTitle="議員";
+
+ /*
+  * 合併後は相手党首を党首とする
+  */
+ const survivingLeader=
+  targetParty.leaderId;
+
+ targetParty.leaderId=
+  survivingLeader||null;
+
+ /*
+  * プレイヤーが元党首だった場合は役職を解除
+  */
+ if(currentParty.leaderId==="player"){
+  state.player.internalTitle="議員";
+
+  const playerPolitician=
+   state.politicians.find(
+    p=>p.id==="player"
+   );
+
+  if(playerPolitician){
+   playerPolitician.internalTitle="議員";
+  }
+ }
+
+ /*
+  * 元政党を削除
+  */
+ delete state.parties[currentParty.id];
+
+ delete state.partyMembers[currentParty.id];
+
+ /*
+  * 合併後の公約は存続政党を基本とする
+  */
+ state.selectedPledgeParty=
+  targetParty.id;
+
+ state.tab="party";
+
+ log(
+  currentParty.name+
+  "と"+
+  targetParty.name+
+  "が合併した。"
+ );
+
+ addNews(
+  "politics",
+  "政党合併",
+  currentParty.name+
+  "と"+
+  targetParty.name+
+  "が合併し、"+
+  targetParty.name+
+  "に統合された。"
+ );
+
+ saveSilently();
+
+ closeModal();
+
+ render();
+
+ showToast(
+  targetParty.name+
+  "への合併が成立しました。"
+ );
+}
  function transferToAnotherParty(){
  const currentParty=getPlayerParty();
 
@@ -6857,6 +7347,20 @@ if(a==="saveOfficers"){saveOfficers();return}
 }
  if(a==="confirmTransferToAnotherParty"){
  confirmTransferToAnotherParty();
+ return;
+}
+ if(a==="mergeWithAnotherParty"){
+ mergeWithAnotherParty();
+ return;
+}
+
+if(a==="confirmMergeWithAnotherParty"){
+ evaluateMergeRequest();
+ return;
+}
+
+if(a==="executePartyMerger"){
+ executePartyMerger(b.dataset.party);
  return;
 }
  if(a==="executeTransferToAnotherParty"){
