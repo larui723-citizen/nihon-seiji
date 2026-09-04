@@ -5391,12 +5391,49 @@ internalTitle:"党首"
 };
 
 state.parties[id].members.push("player");
+
+// 新党結成時点から、プレイヤーが正式な党首として3年間の任期を開始
+state.leadership.termStart={
+ year:state.date.year,
+ month:state.date.month
+};
+
+state.leadership.termEnd={
+ year:state.date.year+3,
+ month:state.date.month
+};
+
+state.leadership.scheduledElection={
+ year:state.date.year+3,
+ month:state.date.month
+};
+
+state.leadership.active=false;
+state.leadership.candidates=[];
+state.leadership.candidacyDecision=null;
+state.leadership.emergency=false;
+state.leadership.emergencyReason=null;
+
 state.personal.nationalSupport=3;
 state.personal.recognition=8;
 state.personal.internalSupport=75;
 state.tab="home";
 
-log("新党「"+partyName+"」を結成し、あなたが党首になった。");
+log(
+ "新党「"+partyName+"」を結成し、あなたが党首になった。"
+ +"党首任期は3年間で、任期満了時に党首選が行われる。"
+);
+
+addNews(
+ "politics",
+ "新党が結成された",
+ "ゲーム内シナリオ。"+partyName+
+ "が結成され、あなたが党首に就任した。"
+);
+
+saveSilently();
+render();
+showToast("新党を結成しました！");
 addNews("politics","新党が結成された","ゲーム内シナリオ。"+partyName+"が結成され、あなたが党首に就任した。");
 saveSilently();
 render();
