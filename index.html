@@ -5177,9 +5177,245 @@ function getBillCommittee(bill){
   c.id==="cabinet"
  )||committees[0]||null;
 }
+    ${
+     bill &&
+     bill.stage==="committee" &&
+     playerCommittee &&
+     getBillCommittee(bill)?.id===playerCommittee.id
+      ? `
+       <div
+        class="card"
+        style="margin-top:12px"
+       >
+        <h3>委員会での行動</h3>
+
+        <div class="muted">
+         この法案はあなたの所属委員会で審議されています。
+         行動1回につき10時間を使用します。
+        </div>
+
+        <div
+         class="actions"
+         style="margin-top:10px"
+        >
+
+         <button
+          type="button"
+          class="green-btn"
+          data-action="committeeAction"
+          data-kind="support"
+         >
+          賛成意見を述べる
+         </button>
+
+         <button
+          type="button"
+          class="red-btn"
+          data-action="committeeAction"
+          data-kind="oppose"
+         >
+          反対意見を述べる
+         </button>
+
+         <button
+          type="button"
+          class="yellow-btn"
+          data-action="committeeAction"
+          data-kind="amendment"
+         >
+          修正案を提出
+         </button>
+
+         <button
+          type="button"
+          data-action="committeeAction"
+          data-kind="negotiation"
+         >
+          修正協議を行う
+         </button>
+
+         <button
+          type="button"
+          data-action="committeeAction"
+          data-kind="question"
+         >
+          政府・官僚に質問
+         </button>
+
+        </div>
+
+        <div
+         class="small muted"
+         style="margin-top:10px"
+        >
+         ${
+          bill.amendmentProposed
+           ?"修正案：提出済み"
+           :"修正案：未提出"
+         }
+         ／
+         質問回数：
+         ${Number(bill.questionCount||0)}回
+        </div>
+
+       </div>
+      `
+      :""
+    }
+function ensureCommitteeEffects(bill){
+
+ if(!bill.committeeEffects){
+  bill.committeeEffects={
+   support:0,
+   oppose:0,
+   amendment:0,
+   negotiation:0,
+   questions:0
+  };
+ }
+
+ return bill.committeeEffects;
+}
 
 
+function committeeAction(kind){
+
+ const bill=state.bill;
+
+ if(!bill){
+  showToast("審議中の法案がありません。");
+  return;
+ }
+
+ if(bill.stage!=="committee"){
+  showToast("現在は委員会審査の段階ではありません。");
+  return;
+ }
+
+ const committee=getBillCommittee(bill);
+
+ if(!committee){
+  showToast("担当委員会が設定されていません。");
+  return;
+ }
+
+ const playerId="player";
+
+ if(!(committee.members||[]).includes(playerId)){
+  showToast("あなたはこの法案を審議する委員会の委員ではありません。");
+  return;
+ }
+
+ /*
+  * 委員会活動は10時間
+  */
+ if(!spendAction("diet")){
+  return;
+ }
+
+ const effects=ensureCommitteeEffects(bill);
+
+ if(kind==="support"){
+
+  effects.support+=8;
+
+  log(
+   `${committee.name}で${bill.title}への賛成意見を表明した。`
+  );
+
+  showToast("委員会で法案への賛成意見を表明しました。");
+
+ }
+
+ else if(kind==="oppose"){
+
+  effects.oppose+=8;
+
+  log(
+   `${committee.name}で${bill.title}への反対意見を表明した。`
+  );
+
+  showToast("委員会で法案への反対意見を表明しました。");
+
+ }
+
+ else if(kind==="amendment"){
+
+  effects.amendment+=5;
+
+  bill.amendmentProposed=true;
+
+  /*
+   * 修正案は単独では成立しない。
+   * 後の交渉によって効果が大きくなる。
+   */
+  log(
+   `${bill.title}について修正案を提出した。`
+  );
+
+  showToast("修正案を提出しました。");
+
+ }
+
+ else if(kind==="negotiation"){
+
+  if(!bill.amendmentProposed){
+
+   showToast(
+    "まず修正案を提出してください。"
+   );
+
+   /*
+    * 行動時間を戻す
+    */
+   state.actionCount=
+    Math.max(
+     0,
+     state.actionCount-getActivityCost("diet")
+    );
+
+   return;
+  }
+
+  effects.negotiation+=10;
+
+  log(
+   `${bill.title}について野党・他党との修正協議を行った。`
+  );
+
+  showToast("修正協議を行いました。");
+
+ }
+
+ else if(kind==="question"){
+
+  effects.questions+=4;
+
+  bill.questionCount=
+   Number(bill.questionCount||0)+1;
+
+  log(
+   `${committee.name}で政府・官僚に質問を行った。`
+  );
+
+  showToast("委員会で質問しました。");
+
+ }
+
+ saveSilently();
+ render();
+}
 function resolveCommitteeVote(bill,committee){
+
+ if(!bill.committeeEffects){
+  bill.committeeEffects={
+   support:0,
+   oppose:0,
+   amendment:0,
+   negotiation:0,
+   questions:0
+  };
+ }
 
  const members=
   (committee.members||[])
@@ -5221,10 +5457,11 @@ function resolveCommitteeVote(bill,committee){
    );
 
   let chance=
-   60-distance*25+loyalty*.15;
+   60-distance*25+
+   loyalty*.15;
 
   /*
-   * 政権与党は政府提出法案に賛成しやすい
+   * 政府提出法案
    */
   if(
    bill.governmentBill &&
@@ -5236,7 +5473,7 @@ function resolveCommitteeVote(bill,committee){
   }
 
   /*
-   * 野党は反対しやすい
+   * 野党
    */
   if(
    bill.governmentBill &&
@@ -5246,6 +5483,37 @@ function resolveCommitteeVote(bill,committee){
   ){
    chance-=10;
   }
+
+  /*
+   * プレイヤーの委員会活動
+   */
+  if(
+   bill.committeeEffects
+  ){
+
+   chance+=
+    Number(bill.committeeEffects.support||0);
+
+   chance-=
+    Number(bill.committeeEffects.oppose||0);
+
+   /*
+    * 修正案が出されている場合、
+    * 野党・他党との合意が成立していれば
+    * 可決しやすくする
+    */
+   chance+=
+    Number(bill.committeeEffects.negotiation||0);
+
+   /*
+    * 委員会で質問を重ねると
+    * 法案への理解が進み、わずかに可決率へ影響
+    */
+   chance+=
+    Number(bill.committeeEffects.questions||0)*.5;
+  }
+
+  chance=clamp(chance,0,100);
 
   if(Math.random()*100<chance){
    support++;
@@ -5259,7 +5527,6 @@ function resolveCommitteeVote(bill,committee){
   ?"passed"
   :"rejected";
 }
-
 
 function resolvePlenaryVote(bill,house){
 
@@ -9266,6 +9533,10 @@ if(a==="leadershipVote"){leadershipVote(b.dataset.id);return}
 if(a==="voteBill"){
 voteBill(b.dataset.vote);
 return;
+}
+ if(a==="committeeAction"){
+ committeeAction(b.dataset.kind);
+ return;
 }
 if(a==="resolveBill"){resolveBill();return}
 
