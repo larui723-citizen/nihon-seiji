@@ -858,8 +858,8 @@ function fmt(n,d=1){return Number(n||0).toFixed(d)}
  return costs[kind]||0;
 }
 function party(id){
- return PARTIES.find(x=>x.id===id)
-  || state?.parties?.[id]
+ return state?.parties?.[id]
+  || PARTIES.find(x=>x.id===id)
   || null;
 }
 function monthText(d){return d.year+"年"+d.month+"月"}
@@ -2163,9 +2163,12 @@ function renderParty(){
  <div class="muted">${esc(pp.short)} / 党支持率 ${fmt(pp.published)}%</div>
  </div>
  <span class="badge ${isLeader()?"purple":"cyan"}">
- ${isLeader()?"あなたが党首":"党首："+esc(getPolitician(pp.leaderId)?.name||"未定")}
- </span>
- </div>
+ ${
+  pp.leaderId==="player"
+   ? "あなたが党首"
+   : "党首："+esc(getPerson(pp.leaderId)?.name||"未定")
+ }
+</span>
 
  <div class="kpis">
  <div class="kpi cyan">
@@ -2214,6 +2217,10 @@ function renderParty(){
 
  <button type="button" data-action="mergeWithAnotherParty">
   他党との合併を申し込む
+ </button>
+
+ <button type="button" data-action="splitParty">
+  党内分裂を検討する
  </button>
 </div>
 
@@ -3821,11 +3828,15 @@ e.crime=clamp(e.crime+rint(-3,3),70,140);
 e.violentCrime=clamp(e.violentCrime+rint(-100,100),3500,8000);
 e.foreignCases=clamp(e.foreignCases+rint(-20,20),300,1000);
 
-PARTIES.forEach(p=>{
-state.parties[p.id].support=clamp(
-state.parties[p.id].support+rand(-.8,.8),
-.2,60
-);
+Object.values(state.parties||{}).forEach(p=>{
+ if(!p)return;
+
+ p.support=
+  clamp(
+   Number(p.support||0)+rand(-.8,.8),
+   .2,
+   60
+  );
 });
 
 leadershipMonthlyCheck();
@@ -3850,11 +3861,29 @@ evolvePartyPledges();
 }
 
 function publishSupport(){
-PARTIES.forEach(p=>{
-state.parties[p.id].published=state.parties[p.id].support;
-});
-state.publishedSupport=Object.fromEntries(PARTIES.map(p=>[p.id,state.parties[p.id].published]));
-log("四半期の政党支持率が公表された。");
+
+ Object.values(state.parties||{}).forEach(p=>{
+  if(!p)return;
+
+  p.published=
+   clamp(
+    Number(p.support||0),
+    0.2,
+    60
+   );
+ });
+
+ state.publishedSupport=
+  Object.fromEntries(
+   Object.values(state.parties||{})
+    .filter(p=>p)
+    .map(p=>[
+     p.id,
+     Number(p.published||0)
+    ])
+  );
+
+ log("四半期の政党支持率が公表された。");
 }
 
 function saveSilently(){
@@ -6669,12 +6698,23 @@ function generatePartyMemberNames(count=5){
  *   "player"    → プレイヤーが党首
  *   相手党首ID → 相手党首が党首
  */
+/*
+ * 合併後の党首を確定
+ *
+ * mergerLeader:
+ * "player"     → プレイヤーが党首
+ * 相手党首ID   → 相手党首が党首
+ *
+ * 合併条件によって決まった結果を
+ * そのまま実データへ反映する。
+ */
 const finalLeader=
- mergerLeader||targetParty.leaderId||null;
+ mergerLeader||
+ targetParty.leaderId||
+ currentParty.leaderId||
+ null;
 
-targetParty.leaderId=
- finalLeader;
-
+targetParty.leaderId=finalLeader;
 /*
  * 合併後の政治家データの役職を同期
  */
@@ -6731,10 +6771,44 @@ if(playerPolitician){
  delete state.partyMembers[currentParty.id];
 
  /*
-  * 合併後の公約は存続政党を基本とする
-  */
- state.selectedPledgeParty=
-  targetParty.id;
+ * 合併による支持率変動
+ *
+ * 単純合算ではなく、
+ * 合併による混乱・離反を考慮して82%程度を維持する。
+ */
+const targetSupport=
+ Number(targetParty.support||0);
+
+const currentSupport=
+ Number(currentParty.support||0);
+
+const mergerShock=
+ rand(-0.6,0.4);
+
+targetParty.support=
+ clamp(
+  ((targetSupport+currentSupport)*0.82)+mergerShock,
+  0.2,
+  60
+ );
+
+targetParty.published=
+ clamp(
+  Number(targetParty.published||targetSupport),
+  0.2,
+  60
+ );
+
+log(
+ "合併による政党支持率の再編が発生した。"+
+ "合併後支持率："+fmt(targetParty.support)+"%"
+);
+
+/*
+ * 合併後の公約は存続政党を基本とする
+ */
+state.selectedPledgeParty=
+ targetParty.id;
 
  state.tab="party";
 
@@ -6765,6 +6839,678 @@ if(playerPolitician){
  showToast(
   targetParty.name+
   "への合併が成立しました。"
+ );
+}
+ /*
+ * =========================================================
+ * 党内分裂
+ * =========================================================
+ */
+
+function splitParty(){
+
+ const currentParty=getPlayerParty();
+
+ if(!currentParty || !state.player){
+  showToast("現在の所属政党を確認できません。");
+  return;
+ }
+
+ const politicalMembers=
+  state.politicians.filter(p=>
+   p.active &&
+   p.partyId===currentParty.id &&
+   p.id!=="player"
+  );
+
+ const ordinaryMembers=
+  state.partyMembers?.[currentParty.id]||[];
+
+ if(
+  politicalMembers.length+
+  ordinaryMembers.length<
+  2
+ ){
+  showToast("党内分裂を起こすには十分な党員・議員が必要です。");
+  return;
+ }
+
+ /*
+  * 分裂候補を評価
+  *
+  * 関係が悪い
+  * 思想が離れている
+  * 忠誠度が低い
+  * 野心が高い
+  *
+  * ほど分裂側に入りやすくする。
+  */
+
+ const candidates=[];
+
+ politicalMembers.forEach(p=>{
+
+  const ideologyDistance=
+   Math.abs(
+    Number(p.ideology||0)-
+    Number(state.player.ideology||0)
+   );
+
+  const relationValue=
+   Number(p.relation||0);
+
+  const trustValue=
+   Number(p.trust||50);
+
+  const ambitionValue=
+   Number(p.ambition||50);
+
+  let splitScore=0;
+
+  splitScore+=ideologyDistance*.25;
+
+  splitScore+=
+   Math.max(0,50-relationValue)*.35;
+
+  splitScore+=
+   Math.max(0,50-trustValue)*.20;
+
+  splitScore+=
+   Math.max(0,ambitionValue-50)*.20;
+
+  splitScore+=rand(-8,8);
+
+  splitScore=
+   clamp(splitScore,0,100);
+
+  if(splitScore>=45){
+   candidates.push({
+    type:"politician",
+    id:p.id,
+    name:p.name,
+    score:splitScore
+   });
+  }
+ });
+
+ ordinaryMembers.forEach(m=>{
+
+  const ideologyDistance=
+   Math.abs(
+    Number(m.ideology||0)-
+    Number(state.player.ideology||0)
+   );
+
+  const loyaltyValue=
+   Number(m.loyalty||50);
+
+  let splitScore=0;
+
+  splitScore+=ideologyDistance*.35;
+
+  splitScore+=
+   Math.max(0,60-loyaltyValue)*.65;
+
+  splitScore+=rand(-8,8);
+
+  splitScore=
+   clamp(splitScore,0,100);
+
+  if(splitScore>=45){
+   candidates.push({
+    type:"ordinary",
+    id:m.id,
+    name:m.name,
+    score:splitScore
+   });
+  }
+ });
+
+ /*
+  * 少なくとも1人は分裂側へ
+  *
+  * 候補がいなければ、
+  * 最もプレイヤーとの関係が弱い人物を候補にする。
+  */
+
+ if(!candidates.length){
+
+  const fallback=[
+   ...politicalMembers.map(p=>({
+    type:"politician",
+    id:p.id,
+    name:p.name,
+    score:20
+   })),
+   ...ordinaryMembers.map(m=>({
+    type:"ordinary",
+    id:m.id,
+    name:m.name,
+    score:20
+   }))
+  ];
+
+  fallback.sort((a,b)=>a.score-b.score);
+
+  if(fallback.length){
+   candidates.push(fallback[0]);
+  }
+ }
+
+ candidates.sort((a,b)=>b.score-a.score);
+
+ /*
+  * 分裂側に入る人数を決定
+  *
+  * 最大でも党全体の半分程度。
+  */
+ const totalMembers=
+  politicalMembers.length+
+  ordinaryMembers.length;
+
+ const maxSplit=
+  Math.max(
+   1,
+   Math.floor(totalMembers/2)
+  );
+
+ const splitMembers=
+  candidates.slice(0,maxSplit);
+
+ const politicalSplit=
+  splitMembers.filter(x=>x.type==="politician");
+
+ const ordinarySplit=
+  splitMembers.filter(x=>x.type==="ordinary");
+
+ /*
+  * 議席数を分裂側へ移す。
+  *
+  * 分裂議員本人の所属院に応じて
+  * 議席を割り当てる。
+  */
+ let splitLower=0;
+ let splitUpper=0;
+
+ politicalSplit.forEach(x=>{
+
+  const p=
+   state.politicians.find(
+    politician=>politician.id===x.id
+   );
+
+  if(!p)return;
+
+  if(p.house==="衆院"){
+   splitLower++;
+  }
+
+  if(p.house==="参院"){
+   splitUpper++;
+  }
+ });
+
+ /*
+  * 分裂側には最低でも
+  * 参加した議員・党員を入れる。
+  */
+
+ const splitCount=
+  politicalSplit.length+
+  ordinarySplit.length;
+
+ if(splitCount<=0){
+  showToast("今回は党内分裂に参加する者がいませんでした。");
+  return;
+ }
+
+ const averageScore=
+  Math.round(
+   splitMembers.reduce(
+    (sum,x)=>sum+x.score,
+    0
+   )/splitMembers.length
+  );
+
+ const names=
+  [
+   currentParty.name+"改革党",
+   currentParty.name+"新党",
+   currentParty.name+"再建党",
+   currentParty.name+"刷新会",
+   currentParty.name+"政策会"
+  ];
+
+ const existingNames=
+  new Set(
+   Object.values(state.parties||{})
+    .map(p=>p.name)
+  );
+
+ let newPartyName=
+  names.find(name=>
+   !existingNames.has(name)
+  );
+
+ if(!newPartyName){
+
+  let index=1;
+
+  do{
+   newPartyName=
+    currentParty.name+
+    "・新勢力"+index;
+   index++;
+  }while(existingNames.has(newPartyName));
+ }
+
+ openModal(
+  "党内分裂の結果",
+  `
+  <div class="card">
+
+   <h3>${esc(currentParty.name)}</h3>
+
+   <div class="section-title">
+    <b>分裂判定</b>
+    <span class="badge ${
+     averageScore>=65
+      ?"red"
+      :"yellow"
+    }">
+     ${averageScore}点
+    </span>
+   </div>
+
+   <p>
+    党内の関係値・思想差・忠誠度・野心などから、
+    ${splitCount}人が分裂側に加わる可能性が高いと判定されました。
+   </p>
+
+   <div class="muted">
+    分裂側の予定政党名：<b>${esc(newPartyName)}</b><br>
+    衆院議席：${splitLower}<br>
+    参院議席：${splitUpper}<br>
+    分裂参加者：${splitCount}人
+   </div>
+
+   <div class="actions" style="margin-top:16px">
+
+    <button
+     type="button"
+     class="red-btn"
+     data-action="confirmPartySplit"
+    >
+     この分裂を実行する
+    </button>
+
+    <button
+     type="button"
+     data-action="closeModal"
+    >
+     中止する
+    </button>
+
+   </div>
+
+  </div>
+  `
+ );
+
+ /*
+  * 実行用に一時保存
+  */
+ state.pendingPartySplit={
+  currentPartyId:currentParty.id,
+  newPartyName,
+  splitMembers,
+  splitLower,
+  splitUpper,
+  averageScore
+ };
+}
+
+
+function executePartySplit(){
+
+ const pending=
+  state.pendingPartySplit;
+
+ if(!pending){
+  showToast("分裂処理を確認できません。");
+  return;
+ }
+
+ const currentParty=
+  state.parties?.[pending.currentPartyId];
+
+ if(!currentParty){
+  showToast("元政党を確認できません。");
+  return;
+ }
+
+ const newId=
+  "splitparty_"+Date.now();
+
+ /*
+  * 分裂側の政党を作成
+  */
+ state.parties[newId]={
+
+  id:newId,
+
+  name:pending.newPartyName,
+
+  short:
+   pending.newPartyName.slice(0,5),
+
+  ideology:
+   Number(currentParty.ideology||0),
+
+  support:
+   clamp(
+    Number(currentParty.support||0)*
+    0.35,
+    0.2,
+    60
+   ),
+
+  published:
+   clamp(
+    Number(currentParty.published||0)*
+    0.35,
+    0.2,
+    60
+   ),
+
+  color:"green",
+
+  lowerSeats:pending.splitLower,
+
+  upperSeats:pending.splitUpper,
+
+  leaderId:null,
+
+  philosophy:
+   (currentParty.philosophy||
+    "新しい政策を掲げる"),
+
+  pledges:
+   {...(currentParty.pledges||{})},
+
+  pledgeTexts:
+   {...(currentParty.pledgeTexts||{})},
+
+  pledgeDynamics:{
+   pressure:0,
+   lastChanged:null,
+   lastReason:"党内分裂",
+   previousSupport:0,
+   history:[]
+  },
+
+  members:[],
+
+  officers:{
+   secretaryGeneral:null,
+   policy:null,
+   election:null,
+   media:null
+  }
+
+ };
+
+ /*
+  * 分裂側の一般党員を移動
+  */
+ state.partyMembers[newId]=[];
+
+ pending.splitMembers
+  .filter(x=>x.type==="ordinary")
+  .forEach(x=>{
+
+   const member=
+    (state.partyMembers[currentParty.id]||[])
+     .find(m=>m.id===x.id);
+
+   if(!member)return;
+
+   member.partyId=newId;
+
+   state.partyMembers[newId].push(member);
+
+  });
+
+ /*
+  * 分裂側の政治家を移動
+  */
+ pending.splitMembers
+  .filter(x=>x.type==="politician")
+  .forEach(x=>{
+
+   const p=
+    state.politicians.find(
+     politician=>politician.id===x.id
+    );
+
+   if(!p)return;
+
+   p.partyId=newId;
+   p.internalTitle="議員";
+
+   state.parties[newId].members.push(p.id);
+
+  });
+
+ /*
+  * 元政党から分裂参加者を削除
+  */
+ currentParty.members=
+  (currentParty.members||[])
+   .filter(id=>
+    !pending.splitMembers.some(
+     x=>x.id===id
+    )
+   );
+
+ /*
+  * 元政党の一般党員からも削除
+  */
+ state.partyMembers[currentParty.id]=
+  (state.partyMembers[currentParty.id]||[])
+   .filter(member=>
+    !pending.splitMembers.some(
+     x=>x.id===member.id
+    )
+   );
+
+ /*
+  * 議席を元党から減らす
+  */
+ currentParty.lowerSeats=
+  Math.max(
+   0,
+   Number(currentParty.lowerSeats||0)-
+   pending.splitLower
+  );
+
+ currentParty.upperSeats=
+  Math.max(
+   0,
+   Number(currentParty.upperSeats||0)-
+   pending.splitUpper
+  );
+
+ /*
+  * 分裂側の党首を決める
+  *
+  * 最も人気＋野心が高い人物。
+  */
+ const splitPoliticians=
+  state.politicians.filter(p=>
+   p.partyId===newId &&
+   p.active
+  );
+
+ const splitLeader=
+  splitPoliticians
+   .sort((a,b)=>
+    (
+     Number(b.popularity||0)+
+     Number(b.ambition||0)
+    )-
+    (
+     Number(a.popularity||0)+
+     Number(a.ambition||0)
+    )
+   )[0];
+
+ if(splitLeader){
+
+  state.parties[newId].leaderId=
+   splitLeader.id;
+
+  splitLeader.internalTitle="党首";
+
+ }else{
+
+  /*
+   * 政治家がいない場合は
+   * 一般党員の中から代表を置く。
+   */
+  const ordinaryLeader=
+   state.partyMembers[newId]?.[0];
+
+  if(ordinaryLeader){
+
+   state.parties[newId].leaderId=
+    ordinaryLeader.id;
+
+   ordinaryLeader.role="党首";
+
+  }
+ }
+
+ /*
+  * 支持率の再編
+  */
+ const splitSupport=
+  Number(state.parties[newId].support||0);
+
+ const shock=
+  rand(-0.8,0.2);
+
+ currentParty.support=
+  clamp(
+   Number(currentParty.support||0)-
+   splitSupport+
+   shock,
+   0.2,
+   60
+  );
+
+ currentParty.published=
+  clamp(
+   Number(currentParty.support||0),
+   0.2,
+   60
+  );
+
+ state.parties[newId].support=
+  clamp(
+   splitSupport+shock,
+   0.2,
+   60
+  );
+
+ state.parties[newId].published=
+  state.parties[newId].support;
+
+ /*
+  * 政党間関係に分裂党を追加
+  */
+ if(!state.partyRelations){
+  state.partyRelations={};
+ }
+
+ state.partyRelations[newId]={};
+
+ Object.values(state.parties||{})
+  .forEach(p=>{
+
+   if(!p)return;
+
+   if(!state.partyRelations[p.id]){
+    state.partyRelations[p.id]={};
+   }
+
+   const distance=
+    clamp(
+     Math.abs(
+      Number(
+       state.parties[newId].ideology||0
+      )-
+      Number(p.ideology||0)
+     )*100,
+     0,
+     100
+    );
+
+   state.partyRelations[newId][p.id]={
+    politicalDistance:distance,
+    coalitionAffinity:100-distance,
+    cooperation:100-distance,
+    conflict:distance
+   };
+
+   state.partyRelations[p.id][newId]={
+    politicalDistance:distance,
+    coalitionAffinity:100-distance,
+    cooperation:100-distance,
+    conflict:distance
+   };
+
+  });
+
+ /*
+  * 後処理
+  */
+ state.pendingPartySplit=null;
+
+ log(
+  currentParty.name+
+  "から"+
+  pending.newPartyName+
+  "が分裂した。"+
+  pending.splitMembers.length+
+  "人が新党へ移った。"
+ );
+
+ addNews(
+  "politics",
+  "政党分裂",
+  currentParty.name+
+  "から"+
+  pending.newPartyName+
+  "が分裂し、"+
+  pending.splitMembers.length+
+  "人が新党へ移った。"
+ );
+
+ state.selectedPledgeParty=
+  currentParty.id;
+
+ state.tab="party";
+
+ saveSilently();
+
+ closeModal();
+
+ render();
+
+ showToast(
+  pending.newPartyName+
+  "が結成されました。"
  );
 }
  function transferToAnotherParty(){
@@ -7411,11 +8157,20 @@ if(a==="saveOfficers"){saveOfficers();return}
  return;
 }
 
+if(a==="splitParty"){
+ splitParty();
+ return;
+}
+
 if(a==="confirmMergeWithAnotherParty"){
  evaluateMergeRequest();
  return;
 }
 
+if(a==="confirmPartySplit"){
+ executePartySplit();
+ return;
+}
 if(a==="executePartyMerger"){
  executePartyMerger(
   b.dataset.party,
