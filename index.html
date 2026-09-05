@@ -4387,13 +4387,6 @@ function candidateName(id){
  return p?.name||id;
 }
 
-for(const arr of Object.values(state.partyMembers||{})){
-const m=arr.find(x=>x.id===id);
-if(m)return m.name;
-}
-return id;
-}
-
 function renderDistrictEditor(type,e){
 const d=e.districts.find(x=>x.id===e.selectedDistrict)||e.districts[0];
  const districtOptions=e.districts.map(x=>`
