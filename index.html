@@ -3235,7 +3235,91 @@ function renderDiet(){
      `
    }
 
+ ${
+     bill &&
+     bill.stage==="committee" &&
+     playerCommittee &&
+     getBillCommittee(bill)?.id===playerCommittee.id
+      ? `
+       <div
+        class="card"
+        style="margin-top:12px"
+       >
+        <h3>委員会での行動</h3>
 
+        <div class="muted">
+         この法案はあなたの所属委員会で審議されています。
+         行動1回につき10時間を使用します。
+        </div>
+
+        <div
+         class="actions"
+         style="margin-top:10px"
+        >
+
+         <button
+          type="button"
+          class="green-btn"
+          data-action="committeeAction"
+          data-kind="support"
+         >
+          賛成意見を述べる
+         </button>
+
+         <button
+          type="button"
+          class="red-btn"
+          data-action="committeeAction"
+          data-kind="oppose"
+         >
+          反対意見を述べる
+         </button>
+
+         <button
+          type="button"
+          class="yellow-btn"
+          data-action="committeeAction"
+          data-kind="amendment"
+         >
+          修正案を提出
+         </button>
+
+         <button
+          type="button"
+          data-action="committeeAction"
+          data-kind="negotiation"
+         >
+          修正協議を行う
+         </button>
+
+         <button
+          type="button"
+          data-action="committeeAction"
+          data-kind="question"
+         >
+          政府・官僚に質問
+         </button>
+
+        </div>
+
+        <div
+         class="small muted"
+         style="margin-top:10px"
+        >
+         ${
+          bill.amendmentProposed
+           ?"修正案：提出済み"
+           :"修正案：未提出"
+         }
+         ／
+         質問回数：
+         ${Number(bill.questionCount||0)}回
+        </div>
+
+       </div>
+      `
+      :""
+    }
    ${renderCommitteeList("lower","衆院")}
 
    ${renderCommitteeList("upper","参院")}
@@ -5177,91 +5261,7 @@ function getBillCommittee(bill){
   c.id==="cabinet"
  )||committees[0]||null;
 }
-    ${
-     bill &&
-     bill.stage==="committee" &&
-     playerCommittee &&
-     getBillCommittee(bill)?.id===playerCommittee.id
-      ? `
-       <div
-        class="card"
-        style="margin-top:12px"
-       >
-        <h3>委員会での行動</h3>
 
-        <div class="muted">
-         この法案はあなたの所属委員会で審議されています。
-         行動1回につき10時間を使用します。
-        </div>
-
-        <div
-         class="actions"
-         style="margin-top:10px"
-        >
-
-         <button
-          type="button"
-          class="green-btn"
-          data-action="committeeAction"
-          data-kind="support"
-         >
-          賛成意見を述べる
-         </button>
-
-         <button
-          type="button"
-          class="red-btn"
-          data-action="committeeAction"
-          data-kind="oppose"
-         >
-          反対意見を述べる
-         </button>
-
-         <button
-          type="button"
-          class="yellow-btn"
-          data-action="committeeAction"
-          data-kind="amendment"
-         >
-          修正案を提出
-         </button>
-
-         <button
-          type="button"
-          data-action="committeeAction"
-          data-kind="negotiation"
-         >
-          修正協議を行う
-         </button>
-
-         <button
-          type="button"
-          data-action="committeeAction"
-          data-kind="question"
-         >
-          政府・官僚に質問
-         </button>
-
-        </div>
-
-        <div
-         class="small muted"
-         style="margin-top:10px"
-        >
-         ${
-          bill.amendmentProposed
-           ?"修正案：提出済み"
-           :"修正案：未提出"
-         }
-         ／
-         質問回数：
-         ${Number(bill.questionCount||0)}回
-        </div>
-
-       </div>
-      `
-      :""
-    }
 function ensureCommitteeEffects(bill){
 
  if(!bill.committeeEffects){
