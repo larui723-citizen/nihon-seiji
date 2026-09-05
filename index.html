@@ -1583,6 +1583,10 @@ election:{
 lower:{
  active:false,
  campaignMonth:false,
+
+ nextElectionYear:null,
+ nextElectionMonth:null,
+
  selectedDistrict:1,
  districts:makeDistricts(289),
  pr:[]
@@ -4182,30 +4186,82 @@ ${getPartyCandidates().map(p=>`<option value="${p.id}">${esc(p.name)} / ${p.hous
 </div>
 
 <div class="col6 card">
-<h2>選挙シミュレーション</h2>
-<div class="muted">候補者配置と比例名簿を設定したら実行できます。</div>
-<div class="actions">
-${!e.active
- ? `<button type="button" class="red-btn" data-action="startElection" data-election="${type}">
-     ${type==="lower"?"衆議院を解散して総選挙を開始":"参議院選挙を開始"}
-    </button>`
- : `<button type="button" class="primary" data-action="runElection" data-election="${type}">
-     ${type==="lower"?"衆院選":"参院選"}を実施
-    </button>`
-}
-</div>
+ <h2>選挙</h2>
+
+ <div class="muted">
+  ${
+   e.active
+    ? "現在は選挙期間中です。候補者配置と比例名簿を確認してください。"
+    : type==="lower"
+      ? "衆議院の選挙はゲーム内の日程により自動的に開始されます。"
+      : "参議院選挙はゲーム内の日程により自動的に開始されます。"
+  }
+ </div>
+
+ ${
+  e.active
+   ? `
+    <div class="actions" style="margin-top:12px">
+     <button
+      type="button"
+      class="primary"
+      data-action="runElection"
+      data-election="${type}">
+      ${type==="lower"?"衆院選":"参院選"}を実施
+     </button>
+    </div>
+   `
+   :""
+ }
 </div>
 </div>`;
 }
 
 function getPartyCandidates(){
-const pp=getPlayerParty();
-const ps=state.politicians.filter(p=>p.partyId===pp.id && p.active);
-const ordinary=state.partyMembers[pp.id]||[];
-return ps.concat(ordinary.map(m=>({
-id:m.id,name:m.name,house:"党員",popularity:m.support,execution:50,
-human:50,ambition:60,trust:m.loyalty,media:m.recognition
-})));
+ const pp=getPlayerParty();
+
+ const result=[];
+
+ if(
+  state.player &&
+  state.player.partyId===pp.id &&
+  state.player.active!==false
+ ){
+  result.push({
+   id:"player",
+   name:state.player.name,
+   house:state.player.house||"衆院",
+   popularity:state.player.popularity??0,
+   execution:state.player.execution??50,
+   human:state.player.human??50,
+   ambition:state.player.ambition??60,
+   trust:state.player.trust??50,
+   media:state.player.media??state.player.recognition??0
+  });
+ }
+
+ const ps=state.politicians.filter(p=>
+  p.partyId===pp.id &&
+  p.active &&
+  p.id!=="player"
+ );
+
+ const ordinary=state.partyMembers[pp.id]||[];
+
+ return result.concat(
+  ps,
+  ordinary.map(m=>({
+   id:m.id,
+   name:m.name,
+   house:"党員",
+   popularity:m.support,
+   execution:50,
+   human:50,
+   ambition:60,
+   trust:m.loyalty,
+   media:m.recognition
+  }))
+ );
 }
 function getPerson(id){
  if(id==="player"){
@@ -4936,6 +4992,29 @@ log(
 );
 
 monthlyUpdate();
+
+/*
+ * 衆議院総選挙
+ *
+ * 衆議院議員の任期満了による総選挙を
+ * 自動的に開始する。
+ *
+ * 任期4年を基本とし、
+ * 解散権は首相だけが持つ。
+ */
+if(
+ !state.election.lower.active &&
+ isPM() &&
+ state.player.house==="衆院" &&
+ state.dietSession?.status==="open" &&
+ state.date.year*12+state.date.month+1>=
+ (
+  (state.election.lower.nextElectionYear||state.date.year+4)*12+
+  (state.election.lower.nextElectionMonth||state.date.month)
+ )
+){
+ startElection("lower");
+}
 
  if(
   scheduled &&
@@ -5830,6 +5909,11 @@ if(winner==="player"){
   year:state.date.year+3,
   month:state.date.month
  };
+ state.election.lower.nextElectionYear=
+ state.date.year+4;
+
+state.election.lower.nextElectionMonth=
+ state.date.month;
 
 state.leadership.emergency=false;
 state.leadership.emergencyReason=null;
@@ -7088,15 +7172,19 @@ function promoteCandidateToPolitician(id){
  return p;
 }
  function startElection(type){
- if(!isLeader()){
-  showToast("選挙を正式に開始できるのは党首です。");
-  return;
+ const e=state.election[type];
+
+ if(type==="lower" && !isPM()){
+  return false;
  }
 
- const e=state.election[type];
+ if(e.active){
+  return false;
+ }
 
  e.active=true;
  e.campaignMonth=true;
+
  assignElectionOpponents(type);
 
  e.districts.forEach(d=>{
@@ -7108,7 +7196,9 @@ function promoteCandidateToPolitician(id){
 
  addNews(
   "politics",
-  type==="lower"?"衆議院解散":"参議院選挙開始",
+  type==="lower"
+   ?"衆議院解散・総選挙"
+   :"参議院選挙開始",
   type==="lower"
    ?"衆議院が解散され、総選挙が始まった。"
    :"参議院選挙が始まった。"
@@ -7116,18 +7206,14 @@ function promoteCandidateToPolitician(id){
 
  log(
   type==="lower"
-   ?"衆議院を解散し、総選挙を開始。"
-   :"参議院選挙を開始。"
+   ?"衆議院が解散され、総選挙が始まった。"
+   :"参議院選挙が始まった。"
  );
 
  saveSilently();
  render();
 
- showToast(
-  type==="lower"
-   ?"衆議院を解散しました。総選挙が始まりました。"
-   :"参議院選挙が始まりました。"
- );
+ return true;
 }
 function assignElectionOpponents(type){
  const e=state.election[type];
