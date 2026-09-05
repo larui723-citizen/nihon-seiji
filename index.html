@@ -3786,7 +3786,7 @@ function renderDiet(){
 
    body=`
 
-    <div class="col4 card">
+        <div class="col4 card">
 
      <h2>${houseName}の議席</h2>
 
@@ -3807,6 +3807,64 @@ function renderDiet(){
        }
       </b>
      </div>
+
+     <hr>
+
+     <h3>勢力図</h3>
+
+     <div class="muted" style="margin-bottom:12px">
+      ${houseName}の政党別議席数
+     </div>
+
+     ${
+      PARTIES
+       .filter(p=>{
+        const party=state.parties[p.id];
+        return party &&
+         (
+          Number(party.lowerSeats||0)+
+          Number(party.upperSeats||0)
+         )>0;
+       })
+       .map(p=>{
+        const party=state.parties[p.id];
+
+        const seats=
+         dietTab==="lower"
+          ?Number(party.lowerSeats||0)
+          :Number(party.upperSeats||0);
+
+        const totalSeats=
+         dietTab==="lower"
+          ?465
+          :248;
+
+        const percent=
+         clamp(
+          seats/totalSeats*100,
+          1,
+          100
+         );
+
+        return `
+         <div style="margin-bottom:12px">
+
+          <div class="row">
+           <span>${esc(p.short)}</span>
+           <b>${seats}議席</b>
+          </div>
+
+          <div class="bar">
+           <span style="
+            width:${percent}%
+           "></span>
+          </div>
+
+         </div>
+        `;
+       })
+       .join("")
+     }
 
      ${
       playerCommittee &&
@@ -3831,7 +3889,6 @@ function renderDiet(){
          </div>
 
          <div class="actions">
-
           <button
            type="button"
            data-action="dietCommittee"
@@ -3840,7 +3897,6 @@ function renderDiet(){
           >
            所属委員会へ移動
           </button>
-
          </div>
 
         </div>
@@ -3849,8 +3905,6 @@ function renderDiet(){
      }
 
     </div>
-
-    <div class="col8 card gradient">
 
      <div class="section-title">
 
