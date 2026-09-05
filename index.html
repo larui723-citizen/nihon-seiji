@@ -1431,7 +1431,7 @@ for(const partner of partners){
   : [lead.id];
 })(),
 actionCount:0,
-actionMax:200,
+actionMax:350,
 logs:["ゲーム開始準備完了。"],
 news:[
 {id:"n1",type:"politics",title:"臨時国会に向け各党が政策調整",text:"ゲーム内シナリオ。各党が国会対応と次期選挙を見据えた協議を始めた。"},
@@ -1581,10 +1581,11 @@ leadership:{
 bill:currentBill,
 election:{
 lower:{
-active:false,
-selectedDistrict:1,
-districts:makeDistricts(12),
-pr:[]
+ active:false,
+ campaignMonth:false,
+ selectedDistrict:1,
+ districts:makeDistricts(289),
+ pr:[]
 },
 upper:{
 active:false,
@@ -2106,8 +2107,18 @@ function normalizeState(){
  if(!state.economy)state.economy={};
  if(typeof state.economy.netMigration!=="number")state.economy.netMigration=180000;
  if(typeof state.economy.workingAgePopulation!=="number")state.economy.workingAgePopulation=73.0;
- state.actionMax=200;
-state.actionCount=clamp(Number(state.actionCount)||0,0,200);
+ const electionMonth=
+ (state.election?.lower?.campaignMonth===true) ||
+ (state.election?.upper?.campaignMonth===true);
+
+state.actionMax=electionMonth?350:200;
+
+state.actionCount=
+ clamp(
+  Number(state.actionCount)||0,
+  0,
+  state.actionMax
+ );
  if(!state.tab)state.tab="home";
 
 if(!state.dietTab){
@@ -4135,7 +4146,14 @@ ${getPartyCandidates().map(p=>`<option value="${p.id}">${esc(p.name)} / ${p.hous
 <h2>選挙シミュレーション</h2>
 <div class="muted">候補者配置と比例名簿を設定したら実行できます。</div>
 <div class="actions">
-<button type="button" class="primary" data-action="runElection" data-election="${type}">${type==="lower"?"衆院選":"参院選"}を実施</button>
+${!e.active
+ ? `<button type="button" class="red-btn" data-action="startElection" data-election="${type}">
+     ${type==="lower"?"衆議院を解散して総選挙を開始":"参議院選挙を開始"}
+    </button>`
+ : `<button type="button" class="primary" data-action="runElection" data-election="${type}">
+     ${type==="lower"?"衆院選":"参院選"}を実施
+    </button>`
+}
 </div>
 </div>
 </div>`;
@@ -4216,23 +4234,17 @@ const d=e.districts.find(x=>x.id===e.selectedDistrict)||e.districts[0];
 return `
 <h2>${esc(d.name)}</h2>
 <div class="field">
-<label>自党候補</label>
-<select id="districtCandidate">
-<option value="">未定</option>
-${getPartyCandidates().map(p=>`<option value="${p.id}" ${d.candidate===p.id?"selected":""}>${esc(p.name)}</option>`).join("")}
-</select>
-</div>
-<div class="field" style="margin-top:10px">
-<label>主な対抗政党</label>
-<select id="opponentParty">
-${PARTIES.filter(p=>p.id!==getPlayerParty().id).map(p=>`<option value="${p.id}" ${d.opponentParty===p.id?"selected":""}>${p.short}</option>`).join("")}
-</select>
-</div>
-<div class="field" style="margin-top:10px">
-<label>主な対抗候補</label>
-<select id="opponentCandidate">
-${state.politicians.filter(p=>p.partyId===d.opponentParty).slice(0,20).map(p=>`<option value="${p.id}" ${d.opponent===p.id?"selected":""}>${esc(p.name)}</option>`).join("")}
-</select>
+ <label>対立候補</label>
+ <div class="muted">
+  ${
+   (()=> {
+    const enemy=state.politicians.find(p=>p.id===d.opponent);
+    if(!enemy)return "AIが対立候補を決定します";
+    const party=state.parties.find(p=>p.id===enemy.partyId);
+    return `${party?.name||"無所属"}・${enemy.name}`;
+   })()
+  }
+ </div>
 </div>
 <div class="actions">
 <button type="button" class="primary" data-action="saveDistrict" data-election="${type}" data-district="${d.id}">この選挙区を保存</button>
@@ -6937,6 +6949,92 @@ function promoteCandidateToPolitician(id){
 
  return p;
 }
+ function startElection(type){
+ if(!isLeader()){
+  showToast("選挙を正式に開始できるのは党首です。");
+  return;
+ }
+
+ const e=state.election[type];
+
+ e.active=true;
+ e.campaignMonth=true;
+ assignElectionOpponents(type);
+
+ e.districts.forEach(d=>{
+  d.result=null;
+ });
+
+ state.actionMax=350;
+ state.actionCount=0;
+
+ addNews(
+  "politics",
+  type==="lower"?"衆議院解散":"参議院選挙開始",
+  type==="lower"
+   ?"衆議院が解散され、総選挙が始まった。"
+   :"参議院選挙が始まった。"
+ );
+
+ log(
+  type==="lower"
+   ?"衆議院を解散し、総選挙を開始。"
+   :"参議院選挙を開始。"
+ );
+
+ saveSilently();
+ render();
+
+ showToast(
+  type==="lower"
+   ?"衆議院を解散しました。総選挙が始まりました。"
+   :"参議院選挙が始まりました。"
+ );
+}
+function assignElectionOpponents(type){
+ const e=state.election[type];
+ const pp=getPlayerParty();
+
+ const opponents=state.politicians.filter(p=>
+  p.active &&
+  p.partyId!==pp.id &&
+  (p.house==="衆院" || p.house==="参院")
+ );
+
+ e.districts.forEach(d=>{
+  const candidates=opponents.filter(p=>
+   p.partyId!==pp.id &&
+   (p.house===
+     (type==="lower"?"衆院":"参院") ||
+    p.house==="参院" ||
+    p.house==="衆院")
+  );
+
+  if(candidates.length){
+   const pool=[...candidates].sort((a,b)=>{
+    const sa=
+     Number(b.popularity||0)*.45+
+     Number(b.human||50)*.25+
+     Number(b.execution||50)*.20+
+     rand(0,20);
+
+    const sb=
+     Number(a.popularity||0)*.45+
+     Number(a.human||50)*.25+
+     Number(a.execution||50)*.20+
+     rand(0,20);
+
+    return sb-sa;
+   });
+
+   const enemy=pool[0];
+
+   d.opponentParty=enemy.partyId;
+   d.opponent=enemy.id;
+  }
+ });
+}
+ 
 function runElection(type){
 if(!isLeader()){
 showToast("選挙を正式に指揮できるのは党首です。");
@@ -6971,6 +7069,8 @@ if(type==="lower")pp.lowerSeats=clamp(wins+prSeats,0,465);
 else pp.upperSeats=clamp(wins+prSeats,0,248);
 
 e.active=false;
+e.campaignMonth=false;
+state.actionMax=200;
 
 addNews("politics",
 (type==="lower"?"衆院選":"参院選")+"の結果",
@@ -10895,6 +10995,7 @@ if(a==="prAdd"){prAdd(b.dataset.election);return}
 if(a==="prUp"){prMove(b.dataset.election,b.dataset.index,-1);return}
 if(a==="prDown"){prMove(b.dataset.election,b.dataset.index,1);return}
 if(a==="prRemove"){prRemove(b.dataset.election,b.dataset.index);return}
+if(a==="startElection"){startElection(b.dataset.election);return}
 if(a==="runElection"){runElection(b.dataset.election);return}
 
 if(a==="foreignMeeting"){foreignMeeting(b.dataset.country);return}
