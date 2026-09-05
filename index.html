@@ -4115,6 +4115,45 @@ ${leader?renderDistrictEditor(type,e):`
 <div class="lock">候補者の選定・対抗馬設定・比例名簿作成は党首のみ可能です。</div>
 <div class="actions"><button type="button" data-action="tab" data-tab="party">党運営を見る</button></div>`}
 </div>
+${e.active && e.campaignMonth ? `
+<div class="col12 card">
+ <div class="section-title">
+  <h2>選挙運動</h2>
+  <span class="badge red">選挙運動中</span>
+ </div>
+
+ <div class="muted">
+  今月は選挙運動期間です。使える政治活動時間は
+  <b>${actionLeft()}時間</b>です。
+ </div>
+
+ <div class="actions" style="margin-top:12px">
+  <button
+   type="button"
+   data-action="campaignAction"
+   data-kind="speech"
+   data-hours="10">
+   街頭演説（10時間）
+  </button>
+
+  <button
+   type="button"
+   data-action="campaignAction"
+   data-kind="local"
+   data-hours="10">
+   選挙区活動（10時間）
+  </button>
+
+  <button
+   type="button"
+   data-action="campaignAction"
+   data-kind="media"
+   data-hours="10">
+   メディア活動（10時間）
+  </button>
+ </div>
+</div>
+` : ""}
 
 <div class="col6 card">
 <h2>比例代表名簿</h2>
@@ -4231,8 +4270,37 @@ return id;
 
 function renderDistrictEditor(type,e){
 const d=e.districts.find(x=>x.id===e.selectedDistrict)||e.districts[0];
+ const districtOptions=e.districts.map(x=>`
+ <button
+  type="button"
+  class="${x.id===e.selectedDistrict?"primary":""}"
+  data-action="selectDistrict"
+  data-district="${x.id}">
+  ${esc(x.name)}
+ </button>
+`).join("");
 return `
 <h2>${esc(d.name)}</h2>
+<div class="field">
+ <label>選挙区を選択</label>
+ <div class="actions">
+  ${districtOptions}
+ </div>
+</div>
+<div class="field">
+ <label>自党候補</label>
+ <select id="districtCandidate">
+ <option value="">候補者なし</option>
+ ${
+  getPartyCandidates().map(p=>`
+   <option value="${esc(p.id)}" ${String(d.candidate)===String(p.id)?"selected":""}>
+    ${esc(p.name)}
+   </option>
+  `).join("")
+ }
+</select>
+</div>
+
 <div class="field">
  <label>対立候補</label>
  <div class="muted">
@@ -4643,6 +4711,57 @@ return `
 行動
 ========================================================= */
 
+function electionCampaignActive(){
+ return (
+  state.election?.lower?.campaignMonth===true ||
+  state.election?.upper?.campaignMonth===true
+ );
+}
+
+function campaignAction(hours=1){
+ if(!electionCampaignActive()){
+  showToast("現在は選挙運動期間ではありません。");
+  return false;
+ }
+
+ const h=Math.max(1,Number(hours)||1);
+
+ if(actionLeft()<h){
+  showToast("選挙運動に使える時間が足りません。");
+  return false;
+ }
+
+ state.actionCount+=h;
+ return true;
+}
+
+function spendCampaignAction(kind,hours=10){
+ if(!campaignAction(hours)){
+  return false;
+ }
+
+ if(kind==="speech"){
+  state.personal.nationalSupport+=1.2;
+  state.personal.localSupport+=1.5;
+  log(`街頭演説を行い、選挙運動時間を${hours}時間使用した。`);
+ }
+
+ if(kind==="local"){
+  state.personal.localSupport+=2.2;
+  state.personal.nationalSupport+=.6;
+  log(`選挙区で選挙運動を行い、選挙運動時間を${hours}時間使用した。`);
+ }
+
+ if(kind==="media"){
+  state.personal.recognition+=2;
+  state.personal.nationalSupport+=1.4;
+  log(`選挙向けメディア活動を行い、選挙運動時間を${hours}時間使用した。`);
+ }
+
+ render();
+ saveSilently();
+ return true;
+}
 function spendAction(kind){
  const timeCost=getActivityCost(kind);
 
@@ -6857,23 +6976,42 @@ function resolvePlenaryVote(bill,house){
 }
 
 function saveDistrict(type,id){
-if(!isLeader()){
-showToast("候補者を決められるのは党首です。");
-return;
+ if(!isLeader()){
+  showToast("候補者を決められるのは党首です。");
+  return;
+ }
+
+ const e=state.election[type];
+ const d=e.districts.find(x=>x.id===Number(id));
+ if(!d)return;
+
+const candidate=
+ document.getElementById("districtCandidate")?.value||null;
+
+if(candidate){
+ const alreadyUsed=e.districts.find(x=>
+  x.id!==Number(id) &&
+  String(x.candidate)===String(candidate)
+ );
+
+ if(alreadyUsed){
+  showToast(
+   `${alreadyUsed.name}にはすでにこの候補者が登録されています。`
+  );
+  return;
+ }
 }
-const e=state.election[type];
-const d=e.districts.find(x=>x.id===Number(id));
-if(!d)return;
 
-d.candidate=document.getElementById("districtCandidate")?.value||null;
-d.opponentParty=document.getElementById("opponentParty")?.value||d.opponentParty;
-d.opponent=document.getElementById("opponentCandidate")?.value||null;
+d.candidate=candidate;
 
-log(d.name+"の候補者・対抗馬を設定した。");
-render();
-showToast("選挙区設定を保存しました。");
+ log(
+  d.name+
+  "の自党候補を設定した。"
+ );
+
+ render();
+ showToast("選挙区設定を保存しました。");
 }
-
 function prAdd(type){
 if(!isLeader())return;
 const id=document.getElementById("prCandidate")?.value;
@@ -6991,48 +7129,22 @@ function promoteCandidateToPolitician(id){
    :"参議院選挙が始まりました。"
  );
 }
-function assignElectionOpponents(type){
- const e=state.election[type];
- const pp=getPlayerParty();
-
- const opponents=state.politicians.filter(p=>
-  p.active &&
-  p.partyId!==pp.id &&
-  (p.house==="衆院" || p.house==="参院")
+e.districts.forEach(d=>{
+ const candidates=opponents.filter(p=>
+  p.house===(type==="lower"?"衆院":"参院")
  );
 
- e.districts.forEach(d=>{
-  const candidates=opponents.filter(p=>
-   p.partyId!==pp.id &&
-   (p.house===
-     (type==="lower"?"衆院":"参院") ||
-    p.house==="参院" ||
-    p.house==="衆院")
-  );
+ if(!candidates.length){
+  d.opponent=null;
+  return;
+ }
 
-  if(candidates.length){
-   const pool=[...candidates].sort((a,b)=>{
-    const sa=
-     Number(b.popularity||0)*.45+
-     Number(b.human||50)*.25+
-     Number(b.execution||50)*.20+
-     rand(0,20);
+ const candidate=
+  candidates[Math.floor(Math.random()*candidates.length)];
 
-    const sb=
-     Number(a.popularity||0)*.45+
-     Number(a.human||50)*.25+
-     Number(a.execution||50)*.20+
-     rand(0,20);
-
-    return sb-sa;
-   });
-
-   const enemy=pool[0];
-
-   d.opponentParty=enemy.partyId;
-   d.opponent=enemy.id;
-  }
- });
+ d.opponent=candidate.id;
+ d.opponentParty=candidate.partyId;
+});
 }
  
 function runElection(type){
@@ -7046,6 +7158,66 @@ const pp=getPlayerParty();
 
 let wins=0;
 e.districts.forEach(d=>{
+ if(!d.candidate){
+ d.result={
+  winner:null,
+  playerCandidate:false,
+  reason:"自党候補なし"
+ };
+ return;
+}
+ const playerCandidate=state.politicians.find(
+ p=>String(p.id)===String(d.candidate)
+);
+
+const opponentCandidate=state.politicians.find(
+ p=>String(p.id)===String(d.opponent)
+);
+
+const playerScore=playerCandidate
+ ? (Number(playerCandidate.popularity)||0)
+   +(Number(playerCandidate.media)||0)*0.5
+   +(Number(playerCandidate.execution)||0)*0.3
+ : 0;
+
+const opponentScore=opponentCandidate
+ ? (Number(opponentCandidate.popularity)||0)
+   +(Number(opponentCandidate.media)||0)*0.5
+   +(Number(opponentCandidate.execution)||0)*0.3
+ : 0;
+ const totalScore=playerScore+opponentScore;
+
+if(!opponentCandidate){
+ d.result={
+  winner:playerCandidate?.id||null,
+  playerCandidate:true,
+  playerVotes:100,
+  opponentVotes:0,
+  reason:"対立候補なし"
+ };
+ return;
+}
+
+const playerVotes=
+ totalScore>0
+  ? Math.round(playerScore/totalScore*100)
+  : 50;
+
+const opponentVotes=100-playerVotes;
+
+const playerWins=playerVotes>=opponentVotes;
+
+d.result={
+ winner:playerWins
+  ? playerCandidate.id
+  : opponentCandidate.id,
+ playerCandidate:true,
+ playerVotes,
+ opponentVotes,
+ reason:playerWins
+  ?"自党候補が当選"
+  :"対立候補が当選"
+};
 if(!d.candidate){
 d.result="未配置";
 return;
@@ -10995,6 +11167,13 @@ if(a==="prAdd"){prAdd(b.dataset.election);return}
 if(a==="prUp"){prMove(b.dataset.election,b.dataset.index,-1);return}
 if(a==="prDown"){prMove(b.dataset.election,b.dataset.index,1);return}
 if(a==="prRemove"){prRemove(b.dataset.election,b.dataset.index);return}
+ if(a==="campaignAction"){
+ spendCampaignAction(
+  b.dataset.kind,
+  Number(b.dataset.hours)||10
+ );
+ return;
+}
 if(a==="startElection"){startElection(b.dataset.election);return}
 if(a==="runElection"){runElection(b.dataset.election);return}
 
