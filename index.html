@@ -1914,23 +1914,104 @@ return Array.from({length:n},(_,i)=>({
 }
 
 function makeBill(seed){
-const bills=[
-["物価高対策給付法案","経済","生活支援を強化するための臨時給付を実施する。",.2],
-["防災・減災強化法案","防災","防災インフラへの公共投資を増やす。",.5],
-["子育て支援拡充法案","社会","子育て世帯への支援を拡大する。",-.1],
-["デジタル行政改革法案","行政","行政手続のデジタル化を加速する。",.25],
-["農業基盤強化法案","農業","農業生産基盤と食料安全保障を強化する。",.4],
-["エネルギー安定供給法案","エネルギー","安定した電力供給と投資を両立させる。",.55],
-["社会保障改革法案","社会保障","社会保障制度の持続可能性を高める。",.1]
-];
-const x=bills[(seed-1)%bills.length];
-return {title:x[0],category:x[1],text:x[2],ideology:x[3],support:0,oppose:0,abstain:0,stage:"committee",
-originHouse:"衆院",
-currentHouse:"衆院",
-governmentBill:true,
-committeeResult:null,
-plenaryResult:null,
-result:null};
+
+ const bills=[
+  ["物価高対策給付法案","経済","生活支援を強化するための臨時給付を実施する。",.2],
+  ["防災・減災強化法案","防災","防災インフラへの公共投資を増やす。",.5],
+  ["子育て支援拡充法案","社会","子育て世帯への支援を拡大する。",-.1],
+  ["デジタル行政改革法案","行政","行政手続のデジタル化を加速する。",.25],
+  ["農業基盤強化法案","農業","農業生産基盤と食料安全保障を強化する。",.4],
+  ["エネルギー安定供給法案","エネルギー","安定した電力供給と投資を両立させる。",.55],
+  ["社会保障改革法案","社会保障","社会保障制度の持続可能性を高める。",.1]
+ ];
+
+ const x=bills[(seed-1)%bills.length];
+
+ return {
+
+  id:"bill_"+seed+"_"+Date.now(),
+
+  title:x[0],
+  category:x[1],
+  text:x[2],
+  ideology:x[3],
+
+  originHouse:"衆院",
+  currentHouse:"衆院",
+
+  governmentBill:true,
+
+  stage:"committee",
+
+  /*
+   * 審議進捗
+   */
+  progress:0,
+  committeeProgress:0,
+  plenaryProgress:0,
+
+  /*
+   * 各段階を最後に進めた年月
+   */
+  lastProgressYear:null,
+  lastProgressMonth:null,
+
+  /*
+   * 委員会関係
+   */
+  committeeId:null,
+  committeeResult:null,
+
+  /*
+   * 委員会での政治活動
+   */
+  committeeEffects:{
+   support:0,
+   oppose:0,
+   amendment:0,
+   negotiation:0,
+   questions:0
+  },
+
+  amendmentProposed:false,
+  amendmentAccepted:false,
+  questionCount:0,
+
+  /*
+   * 党議拘束
+   *
+   * strong  強い党議拘束
+   * normal  通常
+   * free    自由判断
+   * open    自由投票
+   * none    党方針なし
+   */
+  whip:"normal",
+
+  /*
+   * 本会議投票
+   */
+  playerVote:null,
+
+  support:0,
+  oppose:0,
+  abstain:0,
+
+  /*
+   * 各段階の結果
+   */
+  plenaryResult:null,
+
+  /*
+   * 最終結果
+   */
+  result:null,
+
+  /*
+   * 経過ログ
+   */
+  history:[]
+ };
 }
 
 let state=defaultState();
@@ -1973,6 +2054,59 @@ state.actionCount=clamp(Number(state.actionCount)||0,0,200);
  if(!state.news)state.news=[];
  if(!state.relations)state.relations={};
  if(!state.foreignRelations)state.foreignRelations={};
+ if(state.bill){
+
+ if(!state.bill.stage){
+  state.bill.stage="committee";
+ }
+
+ if(typeof state.bill.progress!=="number"){
+  state.bill.progress=0;
+ }
+
+ if(typeof state.bill.committeeProgress!=="number"){
+  state.bill.committeeProgress=0;
+ }
+
+ if(typeof state.bill.plenaryProgress!=="number"){
+  state.bill.plenaryProgress=0;
+ }
+
+ if(!state.bill.committeeEffects){
+  state.bill.committeeEffects={
+   support:0,
+   oppose:0,
+   amendment:0,
+   negotiation:0,
+   questions:0
+  };
+ }
+
+ if(typeof state.bill.amendmentProposed!=="boolean"){
+  state.bill.amendmentProposed=false;
+ }
+
+ if(typeof state.bill.amendmentAccepted!=="boolean"){
+  state.bill.amendmentAccepted=false;
+ }
+
+ if(typeof state.bill.questionCount!=="number"){
+  state.bill.questionCount=0;
+ }
+
+ if(!state.bill.whip){
+  state.bill.whip="normal";
+ }
+
+ if(!Array.isArray(state.bill.history)){
+  state.bill.history=[];
+ }
+
+ if(typeof state.bill.playerVote==="undefined"){
+  state.bill.playerVote=null;
+ }
+
+}
  if(!state.cabinet)state.cabinet={};
  if(!state.election)state.election={lower:{districts:makeDistricts(12),pr:[]},upper:{districts:makeDistricts(8),pr:[]}};
  if(!state.auto)state.auto={enabled:false,direction:"policy"};
@@ -5064,24 +5198,66 @@ function leadershipMonthlyCheck(){
 ========================================================= */
 
 function voteBill(vote){
-  if(state.player.house!=="衆院" && state.player.house!=="参院"){
-    showToast("国会議員ではありません。");
-    return;
-  }
 
-  state.bill.playerVote=vote;
+ const bill=state.bill;
 
-  log(
-    "あなたは法案に"+
-    (vote==="support"?"賛成":
-     vote==="oppose"?"反対":"棄権")+
-    "した。"
+ if(!bill){
+  showToast("審議中の法案がありません。");
+  return;
+ }
+
+ if(
+  state.player.house!=="衆院" &&
+  state.player.house!=="参院"
+ ){
+  showToast("国会議員ではありません。");
+  return;
+ }
+
+ if(bill.stage!=="plenary"){
+  showToast("現在は本会議投票の段階ではありません。");
+  return;
+ }
+
+ if(
+  bill.currentHouse &&
+  bill.currentHouse!==state.player.house
+ ){
+  showToast(
+   "現在この法案を審議しているのは"+
+   bill.currentHouse+
+   "です。"
   );
+  return;
+ }
 
-  showToast("あなたの投票を記録しました。");
-  render();
+ if(
+  vote!=="support" &&
+  vote!=="oppose" &&
+  vote!=="abstain"
+ ){
+  return;
+ }
+
+ bill.playerVote=vote;
+
+ log(
+  `${bill.title}についてあなたは`+
+  (
+   vote==="support"
+    ?"賛成"
+    :vote==="oppose"
+     ?"反対"
+     :"棄権"
+  )+
+  "の意思を示した。"
+ );
+
+ showToast("本会議でのあなたの投票方針を記録しました。");
+
+ saveSilently();
+ render();
 }
-
 function resolveBill(){
 
  const bill=state.bill;
@@ -5091,16 +5267,55 @@ function resolveBill(){
   return;
  }
 
+ /*
+  * 国会閉会中は法案審議を進めない
+  */
+ if(state.dietSession?.status!=="open"){
+  showToast("現在は国会閉会中です。法案審議は進められません。");
+  return;
+ }
+
+ /*
+  * 同じ月に複数段階を進めない
+  */
+ if(
+  bill.lastProgressYear===state.date.year &&
+  bill.lastProgressMonth===state.date.month
+ ){
+  showToast(
+   "この法案は今月すでに審議を進めています。"
+  );
+  return;
+ }
+
+ /*
+  * 国会活動10時間
+  */
+ if(!spendAction("diet")){
+  return;
+ }
+
+ /*
+  * 初期化
+  */
  if(!bill.stage){
   bill.stage="committee";
  }
 
- const stage=bill.stage;
+ if(!bill.committeeEffects){
+  bill.committeeEffects={
+   support:0,
+   oppose:0,
+   amendment:0,
+   negotiation:0,
+   questions:0
+  };
+ }
 
  /*
-  * 委員会審査
+  * 委員会審議
   */
- if(stage==="committee"){
+ if(bill.stage==="committee"){
 
   const committee=
    getBillCommittee(bill);
@@ -5110,21 +5325,71 @@ function resolveBill(){
    return;
   }
 
+  bill.committeeId=committee.id;
+
+  /*
+   * 委員会採決
+   */
   const result=
-   resolveCommitteeVote(bill,committee);
+   resolveCommitteeVote(
+    bill,
+    committee
+   );
 
   bill.committeeResult=result;
 
-  if(result==="passed"){
+  bill.committeeProgress=100;
+  bill.progress=33;
+
+  bill.lastProgressYear=
+   state.date.year;
+
+  bill.lastProgressMonth=
+   state.date.month;
+
+  if(result.result==="passed"){
+
    bill.stage="plenary";
+
+   bill.history.push({
+    year:state.date.year,
+    month:state.date.month,
+    stage:"committee",
+    result:"passed",
+    support:result.support,
+    oppose:result.oppose,
+    abstain:result.abstain
+   });
+
    log(
-    `${bill.title}は${committee.name}で委員会可決となり、本会議へ送られることになった。`
+    `${bill.title}は${committee.name}で可決され、本会議へ送られることになった。`
    );
+
+   showToast(
+    `${committee.name}で委員会可決。本会議へ進みます。`
+   );
+
   }else{
+
    bill.stage="rejected";
    bill.result="否決";
+
+   bill.history.push({
+    year:state.date.year,
+    month:state.date.month,
+    stage:"committee",
+    result:"rejected",
+    support:result.support,
+    oppose:result.oppose,
+    abstain:result.abstain
+   });
+
    log(
     `${bill.title}は${committee.name}で否決された。`
+   );
+
+   showToast(
+    `${committee.name}で法案は否決されました。`
    );
   }
 
@@ -5132,76 +5397,183 @@ function resolveBill(){
   render();
   return;
  }
-
 
  /*
   * 本会議
   */
- if(stage==="plenary"){
+ if(bill.stage==="plenary"){
 
   const house=
    bill.currentHouse||
    bill.originHouse||
-   state.player?.house||
    "衆院";
 
   const result=
-   resolvePlenaryVote(bill,house);
+   resolvePlenaryVote(
+    bill,
+    house
+   );
 
   bill.plenaryResult=result;
 
-  if(result==="passed"){
+  bill.plenaryProgress=100;
 
-   if(house==="衆院"){
+  bill.progress=
+   house==="衆院"
+    ?66
+    :100;
 
-    bill.currentHouse="参院";
-    bill.stage="committee";
-    bill.upperCommitteeStarted=false;
+  bill.lastProgressYear=
+   state.date.year;
 
-    log(
-     `${bill.title}は衆議院本会議で可決され、参議院へ送付された。`
-    );
+  bill.lastProgressMonth=
+   state.date.month;
 
-   }else{
-
-    bill.stage="enacted";
-    bill.result="成立";
-
-    log(
-     `${bill.title}は衆参両院で可決され、法律として成立した。`
-    );
-
-   }
-
-  }else{
+  /*
+   * 否決
+   */
+  if(result.result==="rejected"){
 
    bill.stage="rejected";
    bill.result="否決";
 
+   bill.support=result.support;
+   bill.oppose=result.oppose;
+   bill.abstain=result.abstain;
+
+   bill.history.push({
+    year:state.date.year,
+    month:state.date.month,
+    stage:"plenary",
+    house,
+    result:"rejected",
+    support:result.support,
+    oppose:result.oppose,
+    abstain:result.abstain
+   });
+
    log(
-    `${bill.title}は${house}本会議で否決された。`
+    `${bill.title}は${house}本会議で否決された。`+
+    `（賛成${result.support}・反対${result.oppose}・棄権${result.abstain}）`
    );
+
+   showToast(
+    `${house}本会議で否決されました。`
+   );
+
+   saveSilently();
+   render();
+   return;
   }
+
+  /*
+   * 衆院可決 → 参院へ
+   */
+  if(house==="衆院"){
+
+   bill.support=result.support;
+   bill.oppose=result.oppose;
+   bill.abstain=result.abstain;
+
+   bill.currentHouse="参院";
+   bill.stage="committee";
+
+   bill.committeeId=null;
+   bill.committeeResult=null;
+
+   bill.committeeProgress=0;
+   bill.plenaryProgress=0;
+
+   bill.lastProgressYear=
+    state.date.year;
+
+   bill.lastProgressMonth=
+    state.date.month;
+
+   bill.history.push({
+    year:state.date.year,
+    month:state.date.month,
+    stage:"plenary",
+    house:"衆院",
+    result:"passed",
+    support:result.support,
+    oppose:result.oppose,
+    abstain:result.abstain
+   });
+
+   log(
+    `${bill.title}は衆議院本会議で可決され、参議院へ送付された。`+
+    `（賛成${result.support}・反対${result.oppose}・棄権${result.abstain}）`
+   );
+
+   showToast(
+    "衆議院を通過。参議院の委員会審議へ進みます。"
+   );
+
+   saveSilently();
+   render();
+   return;
+  }
+
+  /*
+   * 参院可決 → 成立
+   */
+  bill.support=result.support;
+  bill.oppose=result.oppose;
+  bill.abstain=result.abstain;
+
+  bill.stage="enacted";
+  bill.result="成立";
+  bill.progress=100;
+
+  bill.history.push({
+   year:state.date.year,
+   month:state.date.month,
+   stage:"plenary",
+   house:"参院",
+   result:"passed",
+   support:result.support,
+   oppose:result.oppose,
+   abstain:result.abstain
+  });
+
+  log(
+   `${bill.title}は衆参両院で可決され、法律として成立した。`+
+   `（参院 賛成${result.support}・反対${result.oppose}・棄権${result.abstain}）`
+  );
+
+  showToast(
+   `${bill.title}が法律として成立しました。`
+  );
 
   saveSilently();
   render();
   return;
  }
 
+ /*
+  * 成立済み
+  */
+ if(bill.stage==="enacted"){
 
- if(stage==="enacted"){
+  showToast(
+   "この法案はすでに成立しています。"
+  );
 
-  showToast("この法案はすでに成立しています。");
   return;
  }
 
+ /*
+  * 否決済み
+  */
+ if(bill.stage==="rejected"){
 
- if(stage==="rejected"){
+  showToast(
+   "この法案はすでに否決されています。"
+  );
 
-  showToast("この法案は否決されています。");
   return;
  }
-
 }
 
 function getBillCommittee(bill){
@@ -5407,27 +5779,33 @@ function committeeAction(kind){
 }
 function resolveCommitteeVote(bill,committee){
 
- if(!bill.committeeEffects){
-  bill.committeeEffects={
-   support:0,
-   oppose:0,
-   amendment:0,
-   negotiation:0,
-   questions:0
-  };
- }
-
  const members=
   (committee.members||[])
    .map(id=>getPolitician(id))
    .filter(Boolean);
 
  if(!members.length){
-  return "passed";
+
+  return {
+   result:"passed",
+   support:0,
+   oppose:0,
+   abstain:0
+  };
  }
+
+ const effects=
+  bill.committeeEffects||{
+   support:0,
+   oppose:0,
+   amendment:0,
+   negotiation:0,
+   questions:0
+  };
 
  let support=0;
  let oppose=0;
+ let abstain=0;
 
  members.forEach(p=>{
 
@@ -5437,8 +5815,13 @@ function resolveCommitteeVote(bill,committee){
   const partyIdeology=
    Number(
     party?.ideology||
-    p.ideology||
     0
+   );
+
+  const personalIdeology=
+   Number(
+    p.ideology||
+    partyIdeology
    );
 
   const billIdeology=
@@ -5446,7 +5829,7 @@ function resolveCommitteeVote(bill,committee){
 
   const distance=
    Math.abs(
-    partyIdeology-billIdeology
+    personalIdeology-billIdeology
    );
 
   const loyalty=
@@ -5457,19 +5840,19 @@ function resolveCommitteeVote(bill,committee){
    );
 
   let chance=
-   60-distance*25+
+   55-
+   distance*.22+
    loyalty*.15;
 
   /*
-   * 政府提出法案
+   * 政権与党
    */
   if(
    bill.governmentBill &&
-   state.governmentParties?.includes(
-    p.partyId
-   )
+   Array.isArray(state.governmentParties) &&
+   state.governmentParties.includes(p.partyId)
   ){
-   chance+=20;
+   chance+=15;
   }
 
   /*
@@ -5477,55 +5860,91 @@ function resolveCommitteeVote(bill,committee){
    */
   if(
    bill.governmentBill &&
-   !state.governmentParties?.includes(
-    p.partyId
+   (
+    !Array.isArray(state.governmentParties) ||
+    !state.governmentParties.includes(p.partyId)
    )
   ){
-   chance-=10;
+   chance-=8;
   }
 
   /*
-   * プレイヤーの委員会活動
+   * 委員会での政治活動
    */
-  if(
-   bill.committeeEffects
-  ){
+  chance+=Number(effects.support||0);
+  chance-=Number(effects.oppose||0);
 
-   chance+=
-    Number(bill.committeeEffects.support||0);
+  chance+=
+   Number(effects.negotiation||0)*.8;
 
-   chance-=
-    Number(bill.committeeEffects.oppose||0);
+  chance+=
+   Number(effects.questions||0)*.25;
 
-   /*
-    * 修正案が出されている場合、
-    * 野党・他党との合意が成立していれば
-    * 可決しやすくする
-    */
-   chance+=
-    Number(bill.committeeEffects.negotiation||0);
-
-   /*
-    * 委員会で質問を重ねると
-    * 法案への理解が進み、わずかに可決率へ影響
-    */
-   chance+=
-    Number(bill.committeeEffects.questions||0)*.5;
+  /*
+   * 修正案
+   */
+  if(bill.amendmentAccepted){
+   chance+=5;
   }
 
-  chance=clamp(chance,0,100);
+  /*
+   * 党議拘束
+   */
+  if(bill.whip==="strong"){
 
-  if(Math.random()*100<chance){
+   if(
+    Array.isArray(state.governmentParties) &&
+    state.governmentParties.includes(p.partyId)
+   ){
+    chance+=20;
+   }
+  }
+
+  if(bill.whip==="normal"){
+
+   if(
+    Array.isArray(state.governmentParties) &&
+    state.governmentParties.includes(p.partyId)
+   ){
+    chance+=10;
+   }
+  }
+
+  chance=clamp(
+   chance,
+   5,
+   95
+  );
+
+  const r=Math.random()*100;
+
+  if(r<chance){
+
    support++;
+
+  }else if(r<chance+10){
+
+   abstain++;
+
   }else{
+
    oppose++;
+
   }
 
  });
 
- return support>oppose
-  ?"passed"
-  :"rejected";
+ const result=
+  support>oppose
+   ?"passed"
+   :"rejected";
+
+ return {
+  result,
+  support,
+  oppose,
+  abstain
+ };
 }
 
 function resolvePlenaryVote(bill,house){
@@ -5535,6 +5954,11 @@ function resolvePlenaryVote(bill,house){
 
  let support=0;
  let oppose=0;
+ let abstain=0;
+
+ const playerPartyId=
+  state.player?.partyId||
+  null;
 
  parties.forEach(p=>{
 
@@ -5544,6 +5968,99 @@ function resolvePlenaryVote(bill,house){
     :Number(p.lowerSeats||0);
 
   if(seats<=0)return;
+
+  /*
+   * プレイヤー所属政党は
+   * 個人投票を後から上書きしない。
+   */
+  if(
+   p.id===playerPartyId &&
+   bill.playerVote
+  ){
+   if(bill.playerVote==="support"){
+    support+=1;
+   }else if(bill.playerVote==="oppose"){
+    oppose+=1;
+   }else{
+    abstain+=1;
+   }
+
+   /*
+    * 残りの同党議員を判定
+    */
+   const otherSeats=
+    Math.max(
+     0,
+     seats-1
+    );
+
+   if(otherSeats<=0)return;
+
+   const ideology=
+    Number(p.ideology||0);
+
+   const distance=
+    Math.abs(
+     ideology-
+     Number(bill.ideology||0)
+    );
+
+   let chance=
+    60-distance*.20;
+
+   if(
+    bill.governmentBill &&
+    Array.isArray(state.governmentParties) &&
+    state.governmentParties.includes(p.id)
+   ){
+    chance+=15;
+   }
+
+   if(bill.whip==="strong"){
+    chance+=15;
+   }else if(bill.whip==="normal"){
+    chance+=8;
+   }
+
+   chance=clamp(
+    chance,
+    5,
+    95
+   );
+
+   const expectedSupport=
+    Math.round(
+     otherSeats*
+     chance/100
+    );
+
+   const expectedAbstain=
+    Math.round(
+     otherSeats*
+     .08
+    );
+
+   support+=expectedSupport;
+
+   abstain+=
+    Math.min(
+     expectedAbstain,
+     otherSeats-expectedSupport
+    );
+
+   oppose+=
+    Math.max(
+     0,
+     otherSeats-
+     expectedSupport-
+     Math.min(
+      expectedAbstain,
+      otherSeats-expectedSupport
+     )
+    );
+
+   return;
+  }
 
   const ideology=
    Number(p.ideology||0);
@@ -5555,26 +6072,102 @@ function resolvePlenaryVote(bill,house){
    );
 
   let chance=
-   65-distance*25;
+   60-distance*.20;
 
+  /*
+   * 政権与党
+   */
   if(
    bill.governmentBill &&
-   state.governmentParties?.includes(p.id)
+   Array.isArray(state.governmentParties) &&
+   state.governmentParties.includes(p.id)
   ){
-   chance+=20;
+   chance+=15;
   }
 
-  if(Math.random()*100<chance){
+  /*
+   * 党議拘束
+   */
+  if(bill.whip==="strong"){
+
+   if(
+    Array.isArray(state.governmentParties) &&
+    state.governmentParties.includes(p.id)
+   ){
+    chance+=18;
+   }
+
+  }else if(bill.whip==="normal"){
+
+   if(
+    Array.isArray(state.governmentParties) &&
+    state.governmentParties.includes(p.id)
+   ){
+    chance+=10;
+   }
+
+  }else if(bill.whip==="free"){
+
+   chance-=2;
+
+  }
+
+  /*
+   * 委員会での修正・協議効果
+   */
+  chance+=
+   Number(
+    bill.committeeEffects?.negotiation||0
+   )*.5;
+
+  chance+=
+   Number(
+    bill.committeeEffects?.support||0
+   )*.25;
+
+  chance-=
+   Number(
+    bill.committeeEffects?.oppose||0
+   )*.25;
+
+  chance=clamp(
+   chance,
+   5,
+   95
+  );
+
+  const r=Math.random()*100;
+
+  if(r<chance){
+
    support+=seats;
+
+  }else if(r<chance+8){
+
+   abstain+=seats;
+
   }else{
+
    oppose+=seats;
+
   }
 
  });
 
- return support>oppose
-  ?"passed"
-  :"rejected";
+ /*
+  * 本会議は賛成が反対を上回れば可決。
+  */
+ const result=
+  support>oppose
+   ?"passed"
+   :"rejected";
+
+ return {
+  result,
+  support,
+  oppose,
+  abstain
+ };
 }
 
 function saveDistrict(type,id){
