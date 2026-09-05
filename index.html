@@ -1780,6 +1780,7 @@ function getCommittee(house,id){
 }
 
 function assignDietCommittees(){
+
  if(!state.diet){
   state.diet={
    committees:createDietCommittees(),
@@ -1798,9 +1799,11 @@ function assignDietCommittees(){
  ];
 
  houses.forEach(h=>{
+
   const politicians=state.politicians.filter(p=>
    p.active!==false &&
-   p.house===h.name
+   p.house===h.name &&
+   p.id!=="player"
   );
 
   const committees=state.diet.committees[h.key];
@@ -1813,14 +1816,20 @@ function assignDietCommittees(){
 
   politicians
    .sort((a,b)=>
-    (Number(b.execution||0)+Number(b.trust||0)+Number(b.human||0))-
-    (Number(a.execution||0)+Number(a.trust||0)+Number(a.human||0))
+    (Number(b.execution||0)+
+     Number(b.trust||0)+
+     Number(b.human||0))-
+    (Number(a.execution||0)+
+     Number(a.trust||0)+
+     Number(a.human||0))
    )
    .forEach(p=>{
+
     let best=null;
     let bestScore=-Infinity;
 
     committees.forEach(c=>{
+
      const members=used[c.id];
 
      if(members.has(p.id))return;
@@ -1833,6 +1842,7 @@ function assignDietCommittees(){
       bestScore=score;
       best=c;
      }
+
     });
 
     if(!best)return;
@@ -1840,15 +1850,19 @@ function assignDietCommittees(){
     used[best.id].add(p.id);
     best.members.push(p.id);
     state.diet.assignments[p.id]=best.id;
+
    });
 
+
   committees.forEach(c=>{
+
    if(!c.members.length)return;
 
    const candidates=c.members
     .map(id=>getPolitician(id))
     .filter(Boolean)
     .sort((a,b)=>{
+
      const sa=
       Number(a.execution||0)+
       Number(a.trust||0)+
@@ -1860,43 +1874,83 @@ function assignDietCommittees(){
       Number(b.human||0);
 
      return sb-sa;
+
     });
 
    if(candidates.length){
     c.chairId=candidates[0].id;
    }
+
   });
+
  });
+
+
+ /*
+  * プレイヤーは必ず1つだけ所属
+  */
 
  const player=state.player;
 
- if(player && (player.house==="衆院" || player.house==="参院")){
-  const key=player.house==="衆院"?"lower":"upper";
-  const committees=state.diet.committees[key];
+ if(
+  player &&
+  (player.house==="衆院" || player.house==="参院")
+ ){
 
+  const key=
+   player.house==="衆院"
+    ?"lower"
+    :"upper";
+
+  const committees=
+   state.diet.committees[key];
+
+  /*
+   * 念のため、全委員会からプレイヤーを削除
+   */
+  committees.forEach(c=>{
+   c.members=
+    (c.members||[])
+     .filter(id=>id!=="player");
+  });
+
+  /*
+   * プレイヤーの適性が最も高い委員会を選ぶ
+   */
   let best=null;
   let bestScore=-Infinity;
 
   committees.forEach(c=>{
-   const score=committeeAbilityScore(player,c);
+
+   const score=
+    committeeAbilityScore(player,c);
 
    if(score>bestScore){
     bestScore=score;
     best=c;
    }
+
   });
 
   if(best){
-   best.members=best.members.filter(id=>id!=="player");
 
-   if(!best.members.includes("player")){
-    best.members.push("player");
-   }
+   best.members.push("player");
 
-   state.diet.assignments.player=best.id;
-   state.diet.playerCommittee=best.id;
+   state.diet.assignments.player=
+    best.id;
+
+   state.diet.playerCommittee=
+    best.id;
+
   }
+
  }
+
+ /*
+  * 現在の法案を担当委員会へ同期
+  */
+ syncBillToCommittee();
+
 }
 function makeDistricts(n){
 const names=["北海道","青森","岩手","宮城","秋田","山形","福島","茨城","栃木","群馬","埼玉","千葉",
@@ -6066,7 +6120,7 @@ function resolveBill(){
 
 function getBillCommittee(bill){
 
- if(!state.diet?.committees){
+ if(!bill || !state.diet?.committees){
   return null;
  }
 
@@ -6084,42 +6138,119 @@ function getBillCommittee(bill){
   state.diet.committees[key]||[];
 
  /*
-  * 法案カテゴリーと委員会分野を対応させる
+  * 法案カテゴリー → 担当委員会ID
   */
  const map={
+
   economy:"economy",
+
   taxation:"finance",
+
   welfare:"health",
+
   education:"education",
+
   childcare:"education",
+
   diplomacy:"foreign",
+
   defense:"security",
+
   energy:"economy",
+
   environment:"environment",
-  constitutionalReform:"constitutional"
+
+  constitutionalReform:"constitutional",
+
+  agriculture:"agriculture",
+
+  agriculturePolicy:"agriculture",
+
+  land:"land",
+
+  justice:"justice",
+
+  administration:"cabinet",
+
+  internal:"internal"
+
  };
 
- const target=
+ const targetId=
   map[bill.category];
 
- if(target){
+ if(targetId){
 
   const exact=
    committees.find(c=>
-    c.field===target
+    c.id===targetId
    );
 
   if(exact){
    return exact;
   }
+
  }
 
  /*
-  * 該当しない場合は内閣委員会
+  * 分類できない法案は内閣委員会
   */
  return committees.find(c=>
   c.id==="cabinet"
  )||committees[0]||null;
+
+}
+ function syncBillToCommittee(){
+
+ const bill=state.bill;
+
+ if(!bill || !state.diet?.committees){
+  return;
+ }
+
+ Object.values(state.diet.committees||{})
+  .forEach(list=>{
+
+   (list||[]).forEach(c=>{
+
+    c.bills=
+     (c.bills||[])
+      .filter(x=>{
+
+       if(typeof x==="string"){
+        return x!==bill.title;
+       }
+
+       return x?.title!==bill.title;
+      });
+
+   });
+
+  });
+
+ if(bill.stage!=="committee"){
+  return;
+ }
+
+ const committee=
+  getBillCommittee(bill);
+
+ if(!committee){
+  return;
+ }
+
+ if(!committee.bills){
+  committee.bills=[];
+ }
+
+ committee.bills.push(bill);
+
+ committee.workload=
+  Math.max(
+   Number(committee.workload||0),
+   10
+  );
+
 }
 
 function ensureCommitteeEffects(bill){
