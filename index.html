@@ -896,10 +896,45 @@ return !!state.player &&
 state.parties[state.player.partyId] &&
 state.parties[state.player.partyId].leaderId==="player"
 }
+function syncPrimeMinister(){
+ const government=
+  Array.isArray(state.governmentParties)
+   ?state.governmentParties
+   :[];
+
+ if(!government.length){
+  state.primeMinisterId=null;
+  return;
+ }
+
+ const current=
+  state.primeMinisterId
+   ?getPerson(state.primeMinisterId)
+   :null;
+
+ if(
+  current &&
+  government.includes(current.partyId) &&
+  state.parties[current.partyId]?.leaderId===state.primeMinisterId
+ ){
+  return;
+ }
+
+ const leadParty=
+  government
+   .slice()
+   .sort((a,b)=>{
+    const sa=Number(state.parties[a]?.lowerSeats||0);
+    const sb=Number(state.parties[b]?.lowerSeats||0);
+    return sb-sa;
+   })[0];
+
+ state.primeMinisterId=
+  state.parties[leadParty]?.leaderId||null;
+}
+
 function isPM(){
- return isLeader() &&
-  Array.isArray(state.governmentParties) &&
-  state.governmentParties.includes(state.player.partyId);
+ return state.primeMinisterId==="player";
 }
 function getPlayerParty(){return state.parties[state.player.partyId]}
 function getPolitician(id){
@@ -1430,8 +1465,12 @@ for(const partner of partners){
   ? coalition.map(x=>x.id)
   : [lead.id];
 })(),
+
+/* 現在の総理大臣 */
+primeMinisterId:null,
+
 actionCount:0,
-actionMax:350,
+actionMax:200,
 logs:["ゲーム開始準備完了。"],
 news:[
 {id:"n1",type:"politics",title:"臨時国会に向け各党が政策調整",text:"ゲーム内シナリオ。各党が国会対応と次期選挙を見据えた協議を始めた。"},
@@ -2221,6 +2260,7 @@ if(!state.diet.assignments){
 if(!state.diet.playerCommittee){
  assignDietCommittees();
 }
+ syncPrimeMinister();
  // 旧セーブデータとの互換性
 state.politicians.forEach(p=>{
  if(typeof p.ideology!=="number"){
@@ -3805,6 +3845,43 @@ function renderDiet(){
         <div class="col4 card">
 
      <h2>${houseName}の議席</h2>
+     ${
+ state.player &&
+ state.player.house===houseName
+ ? `
+  <div
+   class="card"
+   style="margin-bottom:12px"
+  >
+   <div class="section-title">
+    <b>あなたの国会議員情報</b>
+    <span class="badge green">
+     ${houseName}議員
+    </span>
+   </div>
+
+   <div class="row">
+    <span>議員名</span>
+    <b>${esc(state.player.name)}</b>
+   </div>
+
+   <div class="row">
+    <span>所属政党</span>
+    <b>
+     ${esc(getPlayerParty()?.name||"無所属")}
+    </b>
+   </div>
+
+   <div class="row">
+    <span>委員会</span>
+    <b>
+     ${esc(playerCommittee?.name||"未所属")}
+    </b>
+   </div>
+  </div>
+ `
+ :""
+}
 
      <div class="row">
       <span>総議席</span>
@@ -4198,21 +4275,16 @@ ${getPartyCandidates().map(p=>`<option value="${p.id}">${esc(p.name)} / ${p.hous
   }
  </div>
 
- ${
-  e.active
-   ? `
-    <div class="actions" style="margin-top:12px">
-     <button
-      type="button"
-      class="primary"
-      data-action="runElection"
-      data-election="${type}">
-      ${type==="lower"?"衆院選":"参院選"}を実施
-     </button>
-    </div>
-   `
-   :""
- }
+${
+ e.active
+  ? `
+   <div class="muted" style="margin-top:12px">
+    選挙運動期間中です。候補者配置・比例名簿・選挙運動を行ってください。
+    選挙結果は選挙期間終了時に自動的に確定します。
+   </div>
+  `
+  :""
+}
 </div>
 </div>`;
 }
@@ -4314,9 +4386,7 @@ function candidateName(id){
  const p=getPerson(id);
  return p?.name||id;
 }
-function candidateName(id){
-const p=getPolitician(id);
-if(p)return p.name;
+
 for(const arr of Object.values(state.partyMembers||{})){
 const m=arr.find(x=>x.id===id);
 if(m)return m.name;
@@ -4364,7 +4434,7 @@ return `
    (()=> {
     const enemy=state.politicians.find(p=>p.id===d.opponent);
     if(!enemy)return "AIが対立候補を決定します";
-    const party=state.parties.find(p=>p.id===enemy.partyId);
+    const party=state.parties[enemy.partyId];
     return `${party?.name||"無所属"}・${enemy.name}`;
    })()
   }
@@ -4792,30 +4862,75 @@ function campaignAction(hours=1){
 }
 
 function spendCampaignAction(kind,hours=10){
+
+ const costs={
+  speech:8,
+  local:12,
+  media:15
+ };
+
+ const cost=
+  Number(costs[kind]||10);
+
  if(!campaignAction(hours)){
   return false;
  }
 
+ if(
+  Number(state.personal.activityFunds||0)<cost
+ ){
+  state.actionCount-=Math.max(
+   1,
+   Number(hours)||1
+  );
+
+  showToast("選挙運動に使える政治活動資金が足りません。");
+  return false;
+ }
+
+ state.personal.activityFunds-=cost;
+
  if(kind==="speech"){
   state.personal.nationalSupport+=1.2;
   state.personal.localSupport+=1.5;
-  log(`街頭演説を行い、選挙運動時間を${hours}時間使用した。`);
+  log(
+   `街頭演説を行い、${hours}時間と${fmtYenFromMan(cost)}を使用した。`
+  );
  }
 
  if(kind==="local"){
   state.personal.localSupport+=2.2;
   state.personal.nationalSupport+=.6;
-  log(`選挙区で選挙運動を行い、選挙運動時間を${hours}時間使用した。`);
+  log(
+   `選挙区活動を行い、${hours}時間と${fmtYenFromMan(cost)}を使用した。`
+  );
  }
 
  if(kind==="media"){
   state.personal.recognition+=2;
   state.personal.nationalSupport+=1.4;
-  log(`選挙向けメディア活動を行い、選挙運動時間を${hours}時間使用した。`);
+  log(
+   `選挙向けメディア活動を行い、${hours}時間と${fmtYenFromMan(cost)}を使用した。`
+  );
  }
+
+ state.personal.nationalSupport=
+  clamp(
+   state.personal.nationalSupport,
+   0,
+   100
+  );
+
+ state.personal.localSupport=
+  clamp(
+   state.personal.localSupport,
+   0,
+   100
+  );
 
  render();
  saveSilently();
+
  return true;
 }
 function spendAction(kind){
@@ -4918,8 +5033,33 @@ function spendAction(kind){
   );
  }
 
- state.personal.nationalSupport=clamp(state.personal.nationalSupport,0,100);
- state.personal.recognition=clamp(state.personal.recognition,0,100);
+ state.personal.nationalSupport=
+ clamp(
+  state.personal.nationalSupport,
+  0,
+  100
+ );
+
+state.personal.localSupport=
+ clamp(
+  state.personal.localSupport,
+  0,
+  100
+ );
+
+state.personal.internalSupport=
+ clamp(
+  state.personal.internalSupport,
+  0,
+  100
+ );
+
+state.personal.recognition=
+ clamp(
+  state.personal.recognition,
+  0,
+  100
+ );
 
  return true;
 }
@@ -4953,7 +5093,22 @@ showToast(`自動行動完了。残り${actionLeft()}時間です。`);
 }
 
 function nextMonth(){
+/*
+ * 選挙運動期間が終了したら自動開票
+ */
+if(
+ state.election?.lower?.active &&
+ state.election?.lower?.campaignMonth
+){
+ runElection("lower");
+}
 
+if(
+ state.election?.upper?.active &&
+ state.election?.upper?.campaignMonth
+){
+ runElection("upper");
+}
  const scheduled=state.leadership.scheduledElection;
 
  if(
@@ -5004,13 +5159,14 @@ monthlyUpdate();
  */
 if(
  !state.election.lower.active &&
- isPM() &&
- state.player.house==="衆院" &&
- state.dietSession?.status==="open" &&
- state.date.year*12+state.date.month+1>=
+ state.election.lower.nextElectionYear &&
+ state.election.lower.nextElectionMonth &&
  (
-  (state.election.lower.nextElectionYear||state.date.year+4)*12+
-  (state.election.lower.nextElectionMonth||state.date.month)
+  state.date.year>state.election.lower.nextElectionYear ||
+  (
+   state.date.year===state.election.lower.nextElectionYear &&
+   state.date.month>=state.election.lower.nextElectionMonth
+  )
  )
 ){
  startElection("lower");
@@ -7174,7 +7330,7 @@ function promoteCandidateToPolitician(id){
  function startElection(type){
  const e=state.election[type];
 
- if(type==="lower" && !isPM()){
+ if(e.active){
   return false;
  }
 
@@ -7245,113 +7401,149 @@ function assignElectionOpponents(type){
 }
  
 function runElection(type){
-if(!isLeader()){
-showToast("選挙を正式に指揮できるのは党首です。");
-return;
+ const e=state.election[type];
+ const pp=getPlayerParty();
+
+ let wins=0;
+
+ e.districts.forEach(d=>{
+
+  if(!d.candidate){
+   d.result={
+    winner:null,
+    playerCandidate:false,
+    reason:"自党候補なし"
+   };
+   return;
+  }
+
+  const playerCandidate=getPerson(d.candidate);
+  const opponentCandidate=getPerson(d.opponent);
+
+  if(!playerCandidate){
+   d.result={
+    winner:null,
+    playerCandidate:false,
+    reason:"候補者データなし"
+   };
+   return;
+  }
+
+  const playerScore=
+   (Number(playerCandidate.popularity)||0)+
+   (Number(playerCandidate.media)||0)*.5+
+   (Number(playerCandidate.execution)||0)*.3+
+   (Number(playerCandidate.human)||0)*.2;
+
+  const opponentScore=
+   opponentCandidate
+    ?(
+      (Number(opponentCandidate.popularity)||0)+
+      (Number(opponentCandidate.media)||0)*.5+
+      (Number(opponentCandidate.execution)||0)*.3+
+      (Number(opponentCandidate.human)||0)*.2
+     )
+    :0;
+
+  const totalScore=
+   playerScore+opponentScore;
+
+  if(!opponentCandidate){
+
+   d.result={
+    winner:playerCandidate.id,
+    playerCandidate:true,
+    playerVotes:100,
+    opponentVotes:0,
+    reason:"対立候補なし"
+   };
+
+   wins++;
+   promoteCandidateToPolitician(playerCandidate.id);
+   return;
+  }
+
+  const playerVotes=
+   totalScore>0
+    ?Math.round(
+      playerScore/totalScore*100
+     )
+    :50;
+
+  const opponentVotes=
+   100-playerVotes;
+
+  const playerWins=
+   playerVotes>=opponentVotes;
+
+  d.result={
+   winner:
+    playerWins
+     ?playerCandidate.id
+     :opponentCandidate.id,
+   playerCandidate:true,
+   playerVotes,
+   opponentVotes,
+   reason:
+    playerWins
+     ?"自党候補が当選"
+     :"対立候補が当選"
+  };
+
+  if(playerWins){
+   wins++;
+   promoteCandidateToPolitician(playerCandidate.id);
+  }
+
+ });
+
+ const prSeats=
+  Math.max(
+   0,
+   Math.round(Number(pp.published||0)/8)
+   +Math.min(e.pr.length,5)
+  );
+
+ if(type==="lower"){
+  pp.lowerSeats=
+   clamp(wins+prSeats,0,465);
+ }else{
+  pp.upperSeats=
+   clamp(wins+prSeats,0,248);
+ }
+
+ e.active=false;
+ e.campaignMonth=false;
+
+ state.actionMax=200;
+ state.actionCount=0;
+
+ assignDietCommittees();
+
+ addNews(
+  "politics",
+  type==="lower"
+   ?"衆院選の結果"
+   :"参院選の結果",
+  "ゲーム内選挙。"+
+  pp.short+
+  "は選挙区で"+
+  wins+
+  "勝し、比例枠を含む議席を獲得した。"
+ );
+
+ log(
+  (type==="lower"?"衆院":"参院")+
+  "選挙を実施。"+
+  wins+
+  "選挙区で勝利。"
+ );
+
+ saveSilently();
+ render();
+
+ showToast("選挙結果が確定しました。");
 }
-
-const e=state.election[type];
-const pp=getPlayerParty();
-
-let wins=0;
-e.districts.forEach(d=>{
- if(!d.candidate){
- d.result={
-  winner:null,
-  playerCandidate:false,
-  reason:"自党候補なし"
- };
- return;
-}
- const playerCandidate=state.politicians.find(
- p=>String(p.id)===String(d.candidate)
-);
-
-const opponentCandidate=state.politicians.find(
- p=>String(p.id)===String(d.opponent)
-);
-
-const playerScore=playerCandidate
- ? (Number(playerCandidate.popularity)||0)
-   +(Number(playerCandidate.media)||0)*0.5
-   +(Number(playerCandidate.execution)||0)*0.3
- : 0;
-
-const opponentScore=opponentCandidate
- ? (Number(opponentCandidate.popularity)||0)
-   +(Number(opponentCandidate.media)||0)*0.5
-   +(Number(opponentCandidate.execution)||0)*0.3
- : 0;
- const totalScore=playerScore+opponentScore;
-
-if(!opponentCandidate){
- d.result={
-  winner:playerCandidate?.id||null,
-  playerCandidate:true,
-  playerVotes:100,
-  opponentVotes:0,
-  reason:"対立候補なし"
- };
- return;
-}
-
-const playerVotes=
- totalScore>0
-  ? Math.round(playerScore/totalScore*100)
-  : 50;
-
-const opponentVotes=100-playerVotes;
-
-const playerWins=playerVotes>=opponentVotes;
-
-d.result={
- winner:playerWins
-  ? playerCandidate.id
-  : opponentCandidate.id,
- playerCandidate:true,
- playerVotes,
- opponentVotes,
- reason:playerWins
-  ?"自党候補が当選"
-  :"対立候補が当選"
-};
-if(!d.candidate){
-d.result="未配置";
-return;
-}
-const c=getCandidatePerson(d.candidate);
-const strength=(c?.popularity||40)*.45+(c?.human||50)*.25+(c?.execution||50)*.2+(state.personal.nationalSupport)*.1;
-const enemy=state.politicians.find(p=>p.id===d.opponent);
-const enemyStrength=(enemy?.popularity||40)*.45+(enemy?.human||50)*.25+(enemy?.execution||50)*.2+rand(0,20);
-if(strength+rand(-15,15)>enemyStrength){
-d.result="勝利";
-wins++;
-
-promoteCandidateToPolitician(d.candidate);
-}else{
-d.result="敗北";
-}
-});
-
-const prSeats=Math.max(0,Math.round(pp.published/8)+Math.min(e.pr.length,5));
-if(type==="lower")pp.lowerSeats=clamp(wins+prSeats,0,465);
-else pp.upperSeats=clamp(wins+prSeats,0,248);
-
-e.active=false;
-e.campaignMonth=false;
-state.actionMax=200;
-
-addNews("politics",
-(type==="lower"?"衆院選":"参院選")+"の結果",
-"ゲーム内選挙。"+pp.short+"は選挙区で"+wins+"勝し、比例枠を含む議席を獲得した。"
-);
-
-log((type==="lower"?"衆院":"参院")+"選挙を実施。"+wins+"選挙区で勝利。");
-saveSilently();
-render();
-showToast("選挙を実施しました。");
-}
-
 /* =========================================================
 外交・人脈
 ========================================================= */
@@ -8438,27 +8630,30 @@ function updateGDPStats(){
 
   growth+=(Math.random()-0.5)*0.30;
 
-  e.gdpGrowth=clamp(
-    e.gdpGrowth*0.65+growth,
-    -5,
-    6
-  );
+  e.gdpGrowth=
+ e.gdpGrowth*0.65+growth;
 
-  e.realGDP*=1+e.gdpGrowth/100;
-  e.realGDP=clamp(e.realGDP,400,800);
+e.realGDP*=
+ 1+e.gdpGrowth/100;
 
-  const inflationEffect=(e.cpi-2)*0.12;
-  e.gdpDeflator+=inflationEffect;
-  e.gdpDeflator=clamp(e.gdpDeflator,85,125);
+const inflationEffect=
+ (e.cpi-2)*0.12;
 
-  e.nominalGDP=e.realGDP*(e.gdpDeflator/100);
-  e.gdp=e.nominalGDP;
+e.gdpDeflator+=inflationEffect;
 
-  e.potentialGDP*=1.0015;
-  e.potentialGDP=clamp(e.potentialGDP,500,850);
+e.nominalGDP=
+ e.realGDP*
+ (e.gdpDeflator/100);
 
-  e.gdpGap=((e.realGDP-e.potentialGDP)/e.potentialGDP)*100;
-  e.gdpGap=clamp(e.gdpGap,-10,10);
+e.gdp=
+ e.nominalGDP;
+
+e.potentialGDP*=
+ 1.0015;
+
+e.gdpGap=
+ ((e.realGDP-e.potentialGDP)/
+  e.potentialGDP)*100;
 
   const populationBase=125.0;
   e.perCapitaGDP=(e.realGDP/populationBase)*100;
@@ -10975,7 +11170,20 @@ media:60,
 recognition:8,
 internalTitle:"党首"
 };
-
+/*
+ * プレイヤーを正式な政治家データにも登録
+ */
+state.politicians.push({
+ ...state.player,
+ active:true,
+ incumbent:
+  state.player.house==="衆院" ||
+  state.player.house==="参院",
+ group:"党首・無派閥",
+ foreign:[],
+ familiarity:0,
+ relation:0
+});
 state.parties[id].members.push("player");
 
 // 新党結成時点から、プレイヤーが正式な党首として3年間の任期を開始
