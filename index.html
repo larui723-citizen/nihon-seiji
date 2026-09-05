@@ -118,13 +118,6 @@ gap:12px;
 .col8{grid-column:span 8}
 .col6{grid-column:span 6}
 .col4{grid-column:span 4}
- .diet-seat-card{
- grid-column:span 5;
-}
-
-.diet-bill-card{
- grid-column:span 7;
-}
 .col3{grid-column:span 3}
 .card{
 background:linear-gradient(145deg,#0d1b2e,#101f34);
@@ -363,9 +356,7 @@ margin-bottom:12px;
 hr{border:0;border-top:1px solid #29415c;margin:15px 0}
 @media(max-width:900px){
 .col8,.col6,.col4,.col3,
-.diet-seat-card,.diet-bill-card{
- grid-column:span 12;
-}
+.col8,.col6,.col4,.col3{grid-column:span 12}
 .kpis{grid-template-columns:repeat(2,1fr)}
 .election-layout{grid-template-columns:1fr}
 .party-select-grid{grid-template-columns:1fr 1fr}
@@ -2534,7 +2525,7 @@ return `
 </div>
 </div>
 
-<div class="diet-seat-card card">
+<div class="col4 card">
 <h2>党内状況</h2>
 <div class="row"><span>党内支持</span><b>${fmt(state.personal.internalSupport)}%</b></div>
 <div class="row"><span>人望</span><b>${state.player.human}</b></div>
@@ -2744,7 +2735,7 @@ function renderParty(){
  return `
  <div class="grid">
 
- <div class="diet-bill-card card gradient">
+ <div class="col8 card gradient">
  <div class="section-title">
  <div>
  <h2>${esc(pp.name)}</h2>
