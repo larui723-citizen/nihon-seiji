@@ -7129,22 +7129,33 @@ function promoteCandidateToPolitician(id){
    :"参議院選挙が始まりました。"
  );
 }
-e.districts.forEach(d=>{
- const candidates=opponents.filter(p=>
-  p.house===(type==="lower"?"衆院":"参院")
+function assignElectionOpponents(type){
+ const e=state.election[type];
+ const pp=getPlayerParty();
+
+ const opponents=state.politicians.filter(p=>
+  p.active &&
+  p.partyId!==pp.id &&
+  (p.house==="衆院" || p.house==="参院")
  );
 
- if(!candidates.length){
-  d.opponent=null;
-  return;
- }
+ e.districts.forEach(d=>{
+  const candidates=opponents.filter(p=>
+   p.house===(type==="lower"?"衆院":"参院")
+  );
 
- const candidate=
-  candidates[Math.floor(Math.random()*candidates.length)];
+  if(!candidates.length){
+   d.opponent=null;
+   d.opponentParty=null;
+   return;
+  }
 
- d.opponent=candidate.id;
- d.opponentParty=candidate.partyId;
-});
+  const candidate=
+   candidates[Math.floor(Math.random()*candidates.length)];
+
+  d.opponent=candidate.id;
+  d.opponentParty=candidate.partyId;
+ });
 }
  
 function runElection(type){
